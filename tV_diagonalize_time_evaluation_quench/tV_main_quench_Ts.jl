@@ -209,11 +209,12 @@ Vecl.=Vecl./Norm
 #_______________________
 open(output, "w") do f
     if site_max === nothing
-        write(f, "# M=$(M), N=$(N),V0=$(V0),V=$(V), $(boundary)\n")
+        write(f, "# M=$(M), N=$(N),V0=$(V0), V=$(V), $(boundary)\n")
     else
-        write(f, "# M=$(M), N=$(N), max=$(site_max),V0=$(V0),V=$(V), $(boundary)\n")
+        write(f, "# M=$(M), N=$(N), max=$(site_max), V0=$(V0), V=$(V), $(boundary)\n")
     end
-    write(f, "# time S1(n=$(Asize)) S2(n=$(Asize)) S3(n=$(Asize))\n")
+    #write(f, "# time S2(n=$(Asize)) S2($(Asize)) S2($(Asize))\n")
+    write(f, "# time S2(n=$(Asize)) \n")
     #Create the Hamiltonian
     H = sparse_hamiltonian(basis, c[:t],mus, V0, boundary=boundary)
     print(" sparse_hamiltonian finish\n ")
@@ -235,9 +236,7 @@ open(output, "w") do f
     Norm= dot(wft0, wft0)
     wft0.= wft0./sqrt(Norm)
 
-    
     Cycles, CycleSize, NumOfCycles = Translational_Symmetry_Cycles(basis)
-
 
     HRank=0
     for q =0: basis.K-1
@@ -247,16 +246,16 @@ open(output, "w") do f
        #Create the Hamiltonian
        Hq,HqBasis,HqRank = Block_Diagonal_Hamiltonian(basis, Cycles, CycleSize, NumOfCycles,c[:t],V,q)
        EigenEnergies_q,VV = eig(Hq)
-        
+
        for i_HqRank =1: HqRank
            for j_HqRank =1: HqRank
                for i_Translation =1: CycleSize[HqBasis[j_HqRank]]
                    EigenVectors[i_HqRank+ HRank,Cycles[HqBasis[j_HqRank],i_Translation]]+=exp_q[i_Translation]* VV[j_HqRank, i_HqRank]/sqrt(CycleSize[HqBasis[j_HqRank]])
-               end        
+               end
            end
            EigenEnergies[i_HqRank+ HRank]= EigenEnergies_q[i_HqRank]
        end
-      
+
         HRank += HqRank
     end
        warn("eigs finish")
@@ -276,7 +275,7 @@ open(output, "w") do f
             time0=time
             # Calculate the entropy
             s3_particle = particle_entropy_mod(basis, Asize, wft0, site_max)
-            s2_spatial, s2_operational = spatial_entropy(basis, Asize, wft0)
+#            s2_spatial, s2_operational = spatial_entropy(basis, Asize, wft0)
 
             for il=1: ll
                 wft0H0[il]= wft0H0[il]*exp(Delta*EigenEnergies[il])
@@ -289,7 +288,6 @@ open(output, "w") do f
                 end
             end
 
-
             Norm= dot(wft0, wft0)
             wft0.= wft0./sqrt(Norm)
 
@@ -297,7 +295,8 @@ open(output, "w") do f
             #print(wft0,"\n")
             #print("   ","\n")
 
-            write(f, "$(time) $(s3_particle[1]) $(real(s2_spatial)) $(real(s2_operational))\n")
+            #write(f, "$(time) $(s3_particle[2]) $(real(s2_spatial)) $(real(s2_operational))\n")
+            write(f, "$(time) $(s3_particle[2]) \n")
             flush(f)
     end
 end
