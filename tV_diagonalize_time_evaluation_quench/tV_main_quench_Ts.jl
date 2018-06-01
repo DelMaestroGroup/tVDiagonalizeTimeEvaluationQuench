@@ -256,47 +256,49 @@ open(output, "w") do f
            EigenEnergies[i_HqRank+ HRank]= EigenEnergies_q[i_HqRank]
        end
 
-        HRank += HqRank
+       HRank += HqRank
     end
-       warn("eigs finish")
+
+    warn("eigs finish")
 
        #print(EigenVectors, "\n ")
 
-        wft0H0=zeros(Complex128, ll)
+    wft0H0=zeros(Complex128, ll)
         #wft0H0.=0.0+0.0im
-        for il=1: ll
-            for jl=1:ll
-                wft0H0[il]=wft0H0[il]+conj(EigenVectors[il,jl])*wft0[jl]
-            end
+    for il=1: ll
+        for jl=1:ll
+            wft0H0[il]=wft0H0[il]+conj(EigenVectors[il,jl])*wft0[jl]
         end
+    end
+
     time0=time_min
+    Delta = - (0.0+1.0im)*(time_range[2]-time_range[1])
     for time in time_range
-        Delta=-(0.0+1.0im)*(time-time0)
-            time0=time
-            # Calculate the entropy
-            s3_particle = particle_entropy_mod(basis, Asize, wft0, site_max)
+        
+        # Calculate the entropy
+        s3_particle = particle_entropy_mod(basis, Asize, wft0, site_max)
 #            s2_spatial, s2_operational = spatial_entropy(basis, Asize, wft0)
 
-            for il=1: ll
-                wft0H0[il]= wft0H0[il]*exp(Delta*EigenEnergies[il])
+        for il=1: ll
+            wft0H0[il]= wft0H0[il]*exp(Delta*EigenEnergies[il])
+        end
+        wft0.=0.0+0.0im
+
+        for il=1:ll
+            for jl=1: ll
+                wft0[il]=wft0[il]+wft0H0[jl]*EigenVectors[jl,il]
             end
-            wft0.=0.0+0.0im
-            
-            for il=1:ll
-                for jl=1: ll
-                    wft0[il]=wft0[il]+wft0H0[jl]*EigenVectors[jl,il]
-                end
-            end
+        end
 
-            Norm= dot(wft0, wft0)
-            wft0.= wft0./sqrt(Norm)
+        Norm= dot(wft0, wft0)
+        wft0.= wft0./sqrt(Norm)
 
-            #print("   ","\n")
-            #print(wft0,"\n")
-            #print("   ","\n")
+        #print("   ","\n")
+        #print(wft0,"\n")
+        #print("   ","\n")
 
-            #write(f, "$(time) $(s3_particle[2]) $(real(s2_spatial)) $(real(s2_operational))\n")
-            write(f, "$(time) $(s3_particle[2]) \n")
-            flush(f)
+        #write(f, "$(time) $(s3_particle[2]) $(real(s2_spatial)) $(real(s2_operational))\n")
+        write(f, "$(time) $(s3_particle[2]) \n")
+        flush(f)
     end
 end
