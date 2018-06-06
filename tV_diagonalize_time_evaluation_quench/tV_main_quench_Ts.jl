@@ -156,7 +156,8 @@ EigenEnergies=zeros(Complex128,ll)
 exp_q=zeros(Complex128, basis.K)
 
 
-Vec0=zeros(Float64, ll)
+#Vec0=zeros(Float64, ll)
+Vec0 = ones(Float64,ll)
 Vech=zeros(Float64, ll)
 Vecl=zeros(Float64, ll)
 
@@ -167,25 +168,19 @@ wft0=zeros(Complex128, ll)
 #Initial wave function in terms of the symmetry basis
 wft0H0=zeros(Complex128, ll)
 
-wftH0=zeros(Complex128, ll)
-wft=zeros(Complex128, ll)
-
 Vech.=0.01
 Vecl.=0.01
-Vec0.=1.0
-
-
-
+#Vec0.=1.0
 
 if boundary==OBC
-    num_links= basis.K-1
+    num_link= basis.K-1
 elseif boundary==PBC
-    num_links= basis.K
+    num_link= basis.K
 end
 
 for (i, bra) in enumerate(basis)
     cc=0
-    for j=1: num_links
+    for j=1:num_link
         j_next = j % basis.K + 1
         cc+=bra[j]*bra[j_next]
     end
@@ -197,8 +192,9 @@ for (i, bra) in enumerate(basis)
 end
 
 
-Norm=sqrt(sum(Vec0.^2))
-Vec0.=Vec0./Norm
+#Norm=sqrt(sum(Vec0.^2))
+#Vec0.=Vec0./Norm
+Vec0.= Vec0./sqrt(dot(Vec0,Vec0))
 
 Norm=sqrt(sum(Vech.^2))
 Vech.=Vech./Norm
@@ -213,11 +209,16 @@ open(output, "w") do f
     else
         write(f, "# M=$(M), N=$(N), max=$(site_max), V0=$(V0), V=$(V), $(boundary)\n")
     end
-    #write(f, "# time S2(n=$(Asize)) S2($(Asize)) S2($(Asize))\n")
-    write(f, "# time S2(n=$(Asize)) \n")
+    write(f, "# time\t S1(n=$(Asize)\t S2(n=$(Asize)) \n")
+
     #Create the Hamiltonian
     H = sparse_hamiltonian(basis, c[:t],mus, V0, boundary=boundary)
     print(" sparse_hamiltonian finish\n ")
+
+    # H0 = full_hamiltonian(basis, c[:t], V0,boundary=boundary)
+    # EigenValues, EigenVectors = eig(H0)
+    # wft0 = EigenVectors[:,1]
+
     #Perform the Lanczos diagonalization to obtain the lowest eigenvector
     # http://docs.julialang.org/en/release-0.3/stdlib/linalg/?highlight=lanczos
     if V0/c[:t]>1.5
@@ -233,8 +234,9 @@ open(output, "w") do f
         wft0[il] = VRead[il]
     end
 
-    Norm= dot(wft0, wft0)
-    wft0.= wft0./sqrt(Norm)
+    #Norm= dot(wft0, wft0)
+    #wft0.= wft0./sqrt(Norm)
+    # print(real(wft0))
 
     Cycles, CycleSize, NumOfCycles = Translational_Symmetry_Cycles(basis)
 
@@ -250,7 +252,7 @@ open(output, "w") do f
        for i_HqRank =1: HqRank
            for j_HqRank =1: HqRank
                for i_Translation =1: CycleSize[HqBasis[j_HqRank]]
-                   EigenVectors[i_HqRank+ HRank,Cycles[HqBasis[j_HqRank],i_Translation]]+=exp_q[i_Translation]* VV[j_HqRank, i_HqRank]/sqrt(CycleSize[HqBasis[j_HqRank]])
+                   EigenVectors[Cycles[HqBasis[j_HqRank],i_Translation],i_HqRank+ HRank]+=exp_q[i_Translation]* VV[j_HqRank, i_HqRank]/sqrt(CycleSize[HqBasis[j_HqRank]])
                end
            end
            EigenEnergies[i_HqRank+ HRank]= EigenEnergies_q[i_HqRank]
@@ -259,46 +261,60 @@ open(output, "w") do f
        HRank += HqRank
     end
 
-    warn("eigs finish")
-
-       #print(EigenVectors, "\n ")
-
-    wft0H0=zeros(Complex128, ll)
-        #wft0H0.=0.0+0.0im
     for il=1: ll
         for jl=1:ll
-            wft0H0[il]=wft0H0[il]+conj(EigenVectors[il,jl])*wft0[jl]
+            wft0H0[il]=wft0H0[il]+conj(EigenVectors[jl,il])*wft0[jl]
         end
     end
 
-    time0=time_min
-    Delta = - (0.0+1.0im)*(time_range[2]-time_range[1])
-    for time in time_range
-        
+    # H = full_hamiltonian(basis, c[:t], V, boundary=boundary)
+    # EigenEnergies,EigenVectors = eig(H)
+    #
+    # warn("eigs finish")
+    # #print(EigenVectors, "\n ")
+    #
+    # for n=1:ll
+    #     for α=1:ll
+    #         wft0H0[n] = wft0H0[n] + conj(EigenVectors[α,n])*wft0[α]
+    #     end
+    # end
+
+    # for time in time_range
+    #
+    #     # Calculate the entropy
+    #     wft0.=0.0+0.0im
+    #     for α=1:ll
+    #         for n=1:ll
+    #             wft0[α] = wft0[α] + exp(-(0.0+1.0im)*time*EigenEnergies[n])*wft0H0[n]*(EigenVectors[α,n])
+    #         end
+    #     end
+    #
+    #     s3_particle = particle_entropy_mod(basis, Asize, wft0, site_max)
+    #     write(f, " $(time)\t $(s3_particle[1])\t $(s3_particle[2]) \n")
+    #     flush(f)
+    # end
+
+    # Calculate the entropy for t = 0
+    s3_particle = particle_entropy_mod(basis, Asize, wft0, site_max)
+    write(f, " $(time)\t $(s3_particle[1])\t $(s3_particle[2]) \n")
+
+    for time in time_range[2:end]
+
         # Calculate the entropy
-        s3_particle = particle_entropy_mod(basis, Asize, wft0, site_max)
-#            s2_spatial, s2_operational = spatial_entropy(basis, Asize, wft0)
-
-        for il=1: ll
-            wft0H0[il]= wft0H0[il]*exp(Delta*EigenEnergies[il])
-        end
         wft0.=0.0+0.0im
-
         for il=1:ll
             for jl=1: ll
-                wft0[il]=wft0[il]+wft0H0[jl]*EigenVectors[jl,il]
+                wft0[il] = wft0[il] + exp(-(0.0+1.0im)*time*EigenEnergies[jl])*wft0H0[jl]*EigenVectors[il,jl]
             end
         end
 
-        Norm= dot(wft0, wft0)
+#            s2_spatial, s2_operational = spatial_entropy(basis, Asize, wft0)
+
+        Norm = dot(wft0, wft0)
         wft0.= wft0./sqrt(Norm)
+        s3_particle = particle_entropy_mod(basis, Asize, wft0, site_max)
 
-        #print("   ","\n")
-        #print(wft0,"\n")
-        #print("   ","\n")
-
-        #write(f, "$(time) $(s3_particle[2]) $(real(s2_spatial)) $(real(s2_operational))\n")
-        write(f, "$(time) $(s3_particle[2]) \n")
+        write(f, " $(time)\t $(s3_particle[1])\t $(s3_particle[2]) \n")
         flush(f)
     end
 end
