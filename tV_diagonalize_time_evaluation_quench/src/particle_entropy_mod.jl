@@ -2,7 +2,8 @@
 Calculate the particle entanglement entropy for a subset A, using the SVD on (A^*)A First test.
 """
 function particle_entropy_mod(basis::AbstractSzbasis, Asize::Int, d::Vector{Complex128}, MaxOccupation::Int)
-    SRen = Array(Float64, 3)
+    #SRen = Array(Float64, 3)
+    SRen = Array{Float64}(3)
     DimA=Int64
     DimB=Int64
     DimAdA=Int64
@@ -16,7 +17,7 @@ function particle_entropy_mod(basis::AbstractSzbasis, Asize::Int, d::Vector{Comp
     N = basis.N
     Bsize = N - Asize
     if Asize>Bsize
-        Asize,Bsize=Bsize,Asize 
+        Asize,Bsize=Bsize,Asize
     end
     # Dimensions of partition Hilbert spaces
 
@@ -35,9 +36,9 @@ function particle_entropy_mod(basis::AbstractSzbasis, Asize::Int, d::Vector{Comp
     const basisA = RestrictedSzbasis(L, Asize, MaxOccupation)
     const basisB = RestrictedSzbasis(L, Bsize, MaxOccupation)
 
-    braA = Array(Int, L)
-    braB = Array(Int, L)
-    bra = Array(Int, L)
+    braA = Array{Int}(L)
+    braB = Array{Int}(L)
+    bra = Array{Int}(L)
     # Matrix A
     Amatrix = zeros(Complex128, DimA, DimB)
     # Weight factors
@@ -63,7 +64,7 @@ function particle_entropy_mod(basis::AbstractSzbasis, Asize::Int, d::Vector{Comp
     end
 
     AdAmatrix = zeros(Complex128, DimAdA, DimAdA)
-#print("sts\n")  
+#print("sts\n")
 #    for i=1:DimA
 #        for j=i:DimA
 #	    AdA_elem=0.0
@@ -74,11 +75,11 @@ function particle_entropy_mod(basis::AbstractSzbasis, Asize::Int, d::Vector{Comp
 #	    AdAmatrix[j,i]= conj(AdA_elem)
 #        end
 #    end
-#print("end\n")  
+#print("end\n")
 #open( "Corr_pbcL22N11.dat", "w") do f
 #   write(f, "# i-j Corr_cal  Corr_th\n")
 #    for i=1:DimA
-#        Corr=0 
+#        Corr=0
 #        for j=1:Int((L-2)/4)
 #	    Corr+=cos(2*pi*j/L*(i-Int(L/2)))
 #        end
