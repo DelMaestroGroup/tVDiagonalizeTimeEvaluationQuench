@@ -1,7 +1,7 @@
-"""
-Number of links for the boundary conditions.
-"""
-num_links(basis::AbstractSzbasis, boundary::BdryCond) = boundary == PBC ? basis.K : basis.K - 1
+# """
+# Number of links for the boundary conditions.
+# """
+# num_links(basis::AbstractSzbasis, boundary::BdryCond) = boundary == PBC ? basis.K : basis.K - 1
 
 """
 Create a sparse Hamiltonian matrix for a PBC/OBC BH chain in 1D.
