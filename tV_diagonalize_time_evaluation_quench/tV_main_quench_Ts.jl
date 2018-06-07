@@ -1,12 +1,52 @@
-# Renyi entanglement entropy of Bose-Hubbard chains in 1D.
+# Renyi entanglement entropy of the t-V Model after a quantum quench
 
 push!(LOAD_PATH, joinpath(dirname(@__FILE__), "src"))
-#using BoseHubbardDiagonalize
 using tVDiagonalize
-
 using ArgParse
 using JeszenszkiBasis
+using Formatting
 
+# ------------------------------------------------------------------------------
+function getΨ0_trial(t::Float64, V0::Float64, boundary::BdryCond,
+    basis::AbstractSzbasis)
+
+    ll = length(basis)
+
+    if boundary==OBC
+        num_link = basis.K-1
+    elseif boundary==PBC
+        num_link = basis.K
+    end
+
+    if -1.5 < V0/t < 1.5
+        Ψ0_trial = ones(Float64,ll)/sqrt(ll)
+
+    else
+
+        Ψ0_trial = 0.01*ones(Float64,ll)
+
+        for (i, bra) in enumerate(basis)
+            cc=0
+            for j=1:num_link
+                j_next = j % basis.K + 1
+                cc+=bra[j]*bra[j_next]
+            end
+
+            if cc== basis.N-1 & V0/t < -1.5
+                Ψ0_trial[serial_num(basis, bra)]=1.0
+            elseif cc==0 & V0/t > 1.5
+                Ψ0_trial[serial_num(basis, bra)]=1.0
+            end
+        end
+
+        Norm=sqrt(sum(Vecl.^2))
+        Ψ0_trial.=Ψ0_trial./sqrt(dot(Ψ0_trial,Ψ0_trial))
+    end
+
+    Ψ0_trial
+end
+
+# ------------------------------------------------------------------------------
 s = ArgParseSettings()
 s.autofix_names = true
 @add_arg_table s begin
@@ -50,12 +90,12 @@ add_arg_group(s, "tV parameters")
         metavar = "V0"
         help = "initial V"
         arg_type = Float64
-        default = 20.0
+        default = 0.0
     "--V"
         metavar = "V"
         help = "final V"
         arg_type = Float64
-        default = 0.0
+        default = 1.0
     "--t"
         metavar = "t"
         help = "t value"
@@ -68,16 +108,17 @@ add_arg_group(s, "time parameters")
         metavar = "time"
         help = "minimum time"
         arg_type = Float64
-        default = 1.0
+        default = 0.0
     "--time-max"
         metavar = "time"
         help = "maximum time"
         arg_type = Float64
-        default = 20.0
+        default = 5.0
     "--time-step"
         metavar = "time"
         help = "time step"
         arg_type = Float64
+        default = 0.1
     "--time-num"
         metavar = "N"
         help = "number of time"
@@ -89,8 +130,8 @@ end
 add_arg_group(s, "entanglement entropy")
 @add_arg_table s begin
     "--ee"
-        metavar = "XA"
-        help = "compute all EEs with partition size XA"
+        metavar = "ℓ"
+        help = "compute all EEs with partition size ℓ"
         arg_type = Int
         required = true
 end
@@ -117,8 +158,6 @@ const V = c[:V]
 # Initial time
 const time_min = c[:time_min]
 
-
-
 if c[:time_log] && c[:time_num] === nothing
     println("--time-log must be used with --time-num")
     exit(1)
@@ -143,76 +182,40 @@ else
     end
 end
 
+# are we restricting the number of particles per site?
 if site_max === nothing
     const basis = Szbasis(M, N)
 else
     const basis = RestrictedSzbasis(M, N, site_max)
 end
-#_______________________
+
+#_______________________________________________________________________________
 ll=length(basis)
-mus=zeros(Float64, M)
+μ=zeros(Float64, M)
 EigenVectors= zeros(Complex128, ll, ll)
 EigenEnergies=zeros(Complex128,ll)
 exp_q=zeros(Complex128, basis.K)
 
-
-#Vec0=zeros(Float64, ll)
-Vec0 = ones(Float64,ll)
-Vech=zeros(Float64, ll)
-Vecl=zeros(Float64, ll)
-
 VRead=zeros(Complex128, ll)
 
-#Initial wave function in terms of the spatial basis
-wft0=zeros(Complex128, ll)
-#Initial wave function in terms of the symmetry basis
-wft0H0=zeros(Complex128, ll)
+#  wave function in terms of the spatial basis
+Ψ=zeros(Complex128, ll)
 
-Vech.=0.01
-Vecl.=0.01
-#Vec0.=1.0
+#Initial wave function in terms of the eigen basis
+Ψ0H=zeros(Complex128, ll)
 
-if boundary==OBC
-    num_link= basis.K-1
-elseif boundary==PBC
-    num_link= basis.K
-end
-
-for (i, bra) in enumerate(basis)
-    cc=0
-    for j=1:num_link
-        j_next = j % basis.K + 1
-        cc+=bra[j]*bra[j_next]
-    end
-    if cc== basis.N-1
-        Vecl[serial_num(basis, bra)]=1.0
-    elseif cc==0
-        Vech[serial_num(basis, bra)]=1.0
-    end
-end
-
-
-#Norm=sqrt(sum(Vec0.^2))
-#Vec0.=Vec0./Norm
-Vec0.= Vec0./sqrt(dot(Vec0,Vec0))
-
-Norm=sqrt(sum(Vech.^2))
-Vech.=Vech./Norm
-
-Norm=sqrt(sum(Vecl.^2))
-Vecl.=Vecl./Norm
-
-#_______________________
+#_______________________________________________________________________________
 open(output, "w") do f
     if site_max === nothing
         write(f, "# M=$(M), N=$(N),V0=$(V0), V=$(V), $(boundary)\n")
     else
         write(f, "# M=$(M), N=$(N), max=$(site_max), V0=$(V0), V=$(V), $(boundary)\n")
     end
-    write(f, "# time\t S1(n=$(Asize)\t S2(n=$(Asize)) \n")
+    write(f,@sprintf "#%11s%24s%24s\n" "time" "S1(n=$(Asize))" "S2(n=$(Asize))")
 
-    #Create the Hamiltonian
-    H = sparse_hamiltonian(basis, c[:t],mus, V0, boundary=boundary)
+
+    # Create the Hamiltonian
+    H = sparse_hamiltonian(basis, c[:t], μ, V0, boundary=boundary)
     print(" sparse_hamiltonian finish\n ")
 
     # H0 = full_hamiltonian(basis, c[:t], V0,boundary=boundary)
@@ -221,30 +224,21 @@ open(output, "w") do f
 
     #Perform the Lanczos diagonalization to obtain the lowest eigenvector
     # http://docs.julialang.org/en/release-0.3/stdlib/linalg/?highlight=lanczos
-    if V0/c[:t]>1.5
-       d = eigs(H, nev=1, which=:SR,tol=1e-13,v0=Vech)
-    elseif V0/c[:t]<-1.5
-       d = eigs(H, nev=1, which=:SR,tol=1e-13,v0=Vecl)
-    else
-       d = eigs(H, nev=1, which=:SR,tol=1e-13,v0=Vec0)
+
+    # I don't understand why this copying is necessary, it is a type conversion thing
+    VRead = vec(eigs(H, nev=1, which=:SR,tol=1e-13,v0=getΨ0_trial(c[:t],V0,boundary,basis))[2][1:ll])
+    for α=1:ll
+       Ψ[α] = VRead[α]
     end
 
-    VRead = vec(d[2][1:ll])
-    for il=1:ll
-        wft0[il] = VRead[il]
-    end
-
-    #Norm= dot(wft0, wft0)
-    #wft0.= wft0./sqrt(Norm)
-    # print(real(wft0))
-
+    # Exploit symmetries of the hamiltonian to perform a bloack diagonalization
     Cycles, CycleSize, NumOfCycles = Translational_Symmetry_Cycles(basis)
-
     HRank=0
     for q =0: basis.K-1
        for i=1: basis.K
            exp_q[i]=exp((i-1)*(0.0-1.0im)*2*pi*q/basis.K)
        end
+
        #Create the Hamiltonian
        Hq,HqBasis,HqRank = Block_Diagonal_Hamiltonian(basis, Cycles, CycleSize, NumOfCycles,c[:t],V,q)
        EigenEnergies_q,VV = eig(Hq)
@@ -261,11 +255,14 @@ open(output, "w") do f
        HRank += HqRank
     end
 
-    for il=1: ll
-        for jl=1:ll
-            wft0H0[il]=wft0H0[il]+conj(EigenVectors[jl,il])*wft0[jl]
+    # express the energy eigenstates (n) in the spatial basis (α)
+    for n=1:ll
+        for α=1:ll
+            Ψ0H[n]=Ψ0H[n]+conj(EigenVectors[α,n])*Ψ[α]
         end
     end
+
+    print(" Block_Diagonal_Hamiltonian finished\n ")
 
     # H = full_hamiltonian(basis, c[:t], V, boundary=boundary)
     # EigenEnergies,EigenVectors = eig(H)
@@ -294,27 +291,32 @@ open(output, "w") do f
     #     flush(f)
     # end
 
-    # Calculate the entropy for t = 0
-    s3_particle = particle_entropy_mod(basis, Asize, wft0, site_max)
-    write(f, " $(time)\t $(s3_particle[1])\t $(s3_particle[2]) \n")
 
-    for time in time_range[2:end]
+    # Calculate the entropy if we start from t = 0
+    if abs(time_range[1]) < 1.0E-12
+        s3_particle = particle_entropy_mod(basis, Asize, Ψ, site_max)
+        write(f, @sprintf "%12.6f%24.12E%24.12E\n" time_range[1] s3_particle[1] s3_particle[2])
+        time_start = 2
+    else
+        time_start = 1
+    end
 
-        # Calculate the entropy
-        wft0.=0.0+0.0im
-        for il=1:ll
-            for jl=1: ll
-                wft0[il] = wft0[il] + exp(-(0.0+1.0im)*time*EigenEnergies[jl])*wft0H0[jl]*EigenVectors[il,jl]
+    for time in time_range[time_start:end]
+
+        # Calculate the time evolved wave function
+        Ψ.=0.0+0.0im
+        for α=1:ll
+            for n=1:ll
+                Ψ[α] = Ψ[α] + exp(-(0.0+1.0im)*time*EigenEnergies[n])*Ψ0H[n]*EigenVectors[α,n]
             end
         end
 
-#            s2_spatial, s2_operational = spatial_entropy(basis, Asize, wft0)
+#        s2_spatial, s2_operational = spatial_entropy(basis, Asize, wft0)
 
-        Norm = dot(wft0, wft0)
-        wft0.= wft0./sqrt(Norm)
-        s3_particle = particle_entropy_mod(basis, Asize, wft0, site_max)
+        Ψ.= Ψ./sqrt(dot(Ψ,Ψ))
+        s3_particle = particle_entropy_mod(basis, Asize, Ψ, site_max)
 
-        write(f, " $(time)\t $(s3_particle[1])\t $(s3_particle[2]) \n")
+        write(f, @sprintf "%12.6f%24.12E%24.12E\n" time s3_particle[1] s3_particle[2])
         flush(f)
     end
 end
