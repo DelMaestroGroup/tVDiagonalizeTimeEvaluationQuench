@@ -4,7 +4,6 @@ push!(LOAD_PATH, joinpath(dirname(@__FILE__), "src"))
 using tVDiagonalize
 using ArgParse
 using JeszenszkiBasis
-using Formatting
 
 # ------------------------------------------------------------------------------
 function getΨ0_trial(t::Float64, V0::Float64, boundary::BdryCond,
@@ -12,18 +11,17 @@ function getΨ0_trial(t::Float64, V0::Float64, boundary::BdryCond,
 
     ll = length(basis)
 
-    if boundary==OBC
-        num_link = basis.K-1
-    elseif boundary==PBC
-        num_link = basis.K
-    end
-
     if -1.5 < V0/t < 1.5
         Ψ0_trial = ones(Float64,ll)/sqrt(ll)
 
     else
-
         Ψ0_trial = 0.01*ones(Float64,ll)
+
+        if boundary==OBC
+            num_link = basis.K-1
+        elseif boundary==PBC
+            num_link = basis.K
+        end
 
         for (i, bra) in enumerate(basis)
             cc=0
@@ -32,14 +30,13 @@ function getΨ0_trial(t::Float64, V0::Float64, boundary::BdryCond,
                 cc+=bra[j]*bra[j_next]
             end
 
-            if cc== basis.N-1 & V0/t < -1.5
+            if (cc== basis.N-1) & (V0/t < -1.5)
                 Ψ0_trial[serial_num(basis, bra)]=1.0
-            elseif cc==0 & V0/t > 1.5
+            elseif (cc==0) & (V0/t > 1.5)
                 Ψ0_trial[serial_num(basis, bra)]=1.0
             end
         end
 
-        Norm=sqrt(sum(Vecl.^2))
         Ψ0_trial.=Ψ0_trial./sqrt(dot(Ψ0_trial,Ψ0_trial))
     end
 
@@ -61,7 +58,7 @@ s.autofix_names = true
     "--out"
         metavar = "FILE"
         help = "path to output file"
-        required = true
+        #required = true
     "--site-max"
         metavar = "N"
         help = "site occupation restriction"
@@ -141,8 +138,7 @@ c = parsed_args = parse_args(ARGS, s, as_symbols=true)
 const M = c[:M]
 # Number of particles
 const N = c[:N]
-# Output file
-const output = c[:out]
+
 # Site occupation restriction
 const site_max = c[:site_max]
 # Boundary conditions
@@ -182,6 +178,19 @@ else
     end
 end
 
+if length(time_range) > 1
+    Δt = time_range[2]-time_range[1]
+else
+    Δt = time_range[1]
+end
+
+# Output file
+if c[:out] === nothing
+     output = @sprintf "partEE_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%1d.dat" M N V0 V Δt Asize
+else
+     output = c[:out]
+end
+
 # are we restricting the number of particles per site?
 if site_max === nothing
     const basis = Szbasis(M, N)
@@ -204,6 +213,9 @@ VRead=zeros(Complex128, ll)
 #Initial wave function in terms of the eigen basis
 Ψ0H=zeros(Complex128, ll)
 
+# the one body density matrix
+obdm=zeros(Float64,M,length(time_range))
+
 #_______________________________________________________________________________
 open(output, "w") do f
     if site_max === nothing
@@ -211,7 +223,7 @@ open(output, "w") do f
     else
         write(f, "# M=$(M), N=$(N), max=$(site_max), V0=$(V0), V=$(V), $(boundary)\n")
     end
-    write(f,@sprintf "#%11s%24s%24s\n" "time" "S1(n=$(Asize))" "S2(n=$(Asize))")
+    write(f,@sprintf "#%11s%24s%24s\n" "time (tJ)" "S₁(n=$(Asize))" "S₂(n=$(Asize))")
 
 
     # Create the Hamiltonian
@@ -291,15 +303,17 @@ open(output, "w") do f
     #     flush(f)
     # end
 
-
     # Calculate the entropy if we start from t = 0
     if abs(time_range[1]) < 1.0E-12
-        s3_particle = particle_entropy_mod(basis, Asize, Ψ, site_max)
+        s3_particle,obdm[:,1] = particle_entropy_mod(basis, Asize, Ψ, site_max)
+
+        # output entanglement
         write(f, @sprintf "%12.6f%24.12E%24.12E\n" time_range[1] s3_particle[1] s3_particle[2])
         time_start = 2
     else
         time_start = 1
     end
+    time_index = time_start
 
     for time in time_range[time_start:end]
 
@@ -314,9 +328,34 @@ open(output, "w") do f
 #        s2_spatial, s2_operational = spatial_entropy(basis, Asize, wft0)
 
         Ψ.= Ψ./sqrt(dot(Ψ,Ψ))
-        s3_particle = particle_entropy_mod(basis, Asize, Ψ, site_max)
+        s3_particle,obdm[:,time_index] = particle_entropy_mod(basis, Asize, Ψ, site_max)
 
         write(f, @sprintf "%12.6f%24.12E%24.12E\n" time s3_particle[1] s3_particle[2])
         flush(f)
+        time_index += 1
     end
+end
+
+#_______________________________________________________________________________
+# setup output file if we are measuring the time dependent OBDM
+if Asize == 1
+    obdm_name = @sprintf "obdm_%02d_%02d_%+5.3f_%+5.3f_%6.4f.dat" M N V0 V Δt
+    open(obdm_name, "w") do obdm_f
+        write(obdm_f, @sprintf "#%11s" "|i-j|")
+        for time in time_range
+            write(obdm_f, @sprintf "%16.6f" time)
+        end
+        write(obdm_f, "\n")
+        flush(obdm_f)
+
+        for i = 1:M
+            write(obdm_f, @sprintf "%16d" (i-Int(M/2)))
+            for (time_index, time) in enumerate(time_range)
+                write(obdm_f, @sprintf "%16.6E" obdm[i,time_index])
+            end
+            write(obdm_f, "\n")
+            flush(obdm_f)
+        end
+
+     end
 end
