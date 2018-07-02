@@ -205,8 +205,6 @@ EigenVectors= zeros(Complex128, ll, ll)
 EigenEnergies=zeros(Complex128,ll)
 exp_q=zeros(Complex128, basis.K)
 
-VRead=zeros(Complex128, ll)
-
 #  wave function in terms of the spatial basis
 Ψ=zeros(Complex128, ll)
 
@@ -238,10 +236,7 @@ open(output, "w") do f
     # http://docs.julialang.org/en/release-0.3/stdlib/linalg/?highlight=lanczos
 
     # I don't understand why this copying is necessary, it is a type conversion thing
-    VRead = vec(eigs(H, nev=1, which=:SR,tol=1e-13,v0=getΨ0_trial(c[:t],V0,boundary,basis))[2][1:ll])
-    for α=1:ll
-       Ψ[α] = VRead[α]
-    end
+    Ψ = eigs(H, nev=1, which=:SR,tol=1e-13,v0=getΨ0_trial(c[:t],V0,boundary,basis))[2][1:ll].*ones(Complex128,ll)
 
     # Exploit symmetries of the hamiltonian to perform a bloack diagonalization
     Cycles, CycleSize, NumOfCycles = Translational_Symmetry_Cycles(basis)
@@ -337,7 +332,7 @@ open(output, "w") do f
 end
 
 #_______________________________________________________________________________
-# setup output file if we are measuring the time dependent OBDM
+# output the time dependent OBDM to disk
 if Asize == 1
     obdm_name = @sprintf "obdm_%02d_%02d_%+5.3f_%+5.3f_%6.4f.dat" M N V0 V Δt
     open(obdm_name, "w") do obdm_f
