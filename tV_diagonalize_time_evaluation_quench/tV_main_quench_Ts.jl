@@ -58,11 +58,16 @@ s.autofix_names = true
     "--out"
         metavar = "FILE"
         help = "path to output file"
-        #required = true
     "--site-max"
         metavar = "N"
         help = "site occupation restriction"
         arg_type = Int
+    "--obdm"
+        help = "output the spatial dependence of the OBDM"
+        action = :store_true
+    "--spatial"
+        help = "output the spatial entanglement entropy for ℓ = M/2"
+        action = :store_true
 end
 add_arg_group(s, "boundary conditions")
 @add_arg_table s begin
@@ -191,6 +196,11 @@ else
      output = c[:out]
 end
 
+# output file if we are measuring the spatial entanglement entropy
+if c[:spatial]
+     spat_output = @sprintf "spatEE_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%1d.dat" M N V0 V Δt Asize
+end
+
 # are we restricting the number of particles per site?
 if site_max === nothing
     const basis = Szbasis(M, N)
@@ -215,125 +225,165 @@ exp_q=zeros(Complex128, basis.K)
 obdm=zeros(Float64,M,length(time_range))
 
 #_______________________________________________________________________________
-open(output, "w") do f
+
+# open and prepare files for output
+f_part = open(output, "w")
+if site_max === nothing
+    write(f_part, "# M=$(M), N=$(N),V0=$(V0), V=$(V), $(boundary)\n")
+else
+    write(f_part, "# M=$(M), N=$(N), max=$(site_max), V0=$(V0), V=$(V), $(boundary)\n")
+end
+write(f_part,@sprintf "#%11s%24s%24s\n" "time (tJ)" "S₁(n=$(Asize))" "S₂(n=$(Asize))")
+
+if c[:spatial]
+    ℓsize = div(M, 2)
+    f_spat = open(spat_output, "w")
     if site_max === nothing
-        write(f, "# M=$(M), N=$(N),V0=$(V0), V=$(V), $(boundary)\n")
+        write(f_spat, "# M=$(M), N=$(N),V0=$(V0), V=$(V), $(boundary)\n")
     else
-        write(f, "# M=$(M), N=$(N), max=$(site_max), V0=$(V0), V=$(V), $(boundary)\n")
+        write(f_spat, "# M=$(M), N=$(N), max=$(site_max), V0=$(V0), V=$(V), $(boundary)\n")
     end
-    write(f,@sprintf "#%11s%24s%24s\n" "time (tJ)" "S₁(n=$(Asize))" "S₂(n=$(Asize))")
+    write(f_spat,@sprintf "#%11s%24s%24s\n" "time (tJ)" "S₁(ℓ=$(ℓsize))" "S₂(ℓ=$(ℓsize))")
+end
 
+#_______________________________________________________________________________
 
-    # Create the Hamiltonian
-    H = sparse_hamiltonian(basis, c[:t], μ, V0, boundary=boundary)
-    print(" sparse_hamiltonian finish\n ")
+# Create the Hamiltonian
+H = sparse_hamiltonian(basis, c[:t], μ, V0, boundary=boundary)
+print(" sparse_hamiltonian finish\n ")
 
-    # H0 = full_hamiltonian(basis, c[:t], V0,boundary=boundary)
-    # EigenValues, EigenVectors = eig(H0)
-    # wft0 = EigenVectors[:,1]
+# H0 = full_hamiltonian(basis, c[:t], V0,boundary=boundary)
+# EigenValues, EigenVectors = eig(H0)
+# wft0 = EigenVectors[:,1]
 
-    #Perform the Lanczos diagonalization to obtain the lowest eigenvector
-    # http://docs.julialang.org/en/release-0.3/stdlib/linalg/?highlight=lanczos
+#Perform the Lanczos diagonalization to obtain the lowest eigenvector
+# http://docs.julialang.org/en/release-0.3/stdlib/linalg/?highlight=lanczos
 
-    # I don't understand why this copying is necessary, it is a type conversion thing
-    Ψ = eigs(H, nev=1, which=:SR,tol=1e-13,v0=getΨ0_trial(c[:t],V0,boundary,basis))[2][1:ll].*ones(Complex128,ll)
+# I don't understand why this copying is necessary, it is a type conversion thing
+Ψ = eigs(H, nev=1, which=:SR,tol=1e-13,v0=getΨ0_trial(c[:t],V0,boundary,basis))[2][1:ll].*ones(Complex128,ll)
 
-    # Exploit symmetries of the hamiltonian to perform a bloack diagonalization
-    Cycles, CycleSize, NumOfCycles = Translational_Symmetry_Cycles(basis)
-    HRank=0
-    for q =0: basis.K-1
-       for i=1: basis.K
-           exp_q[i]=exp((i-1)*(0.0-1.0im)*2*pi*q/basis.K)
-       end
+# Exploit symmetries of the hamiltonian to perform a bloack diagonalization
+Cycles, CycleSize, NumOfCycles = Translational_Symmetry_Cycles(basis)
+HRank=0
+for q =0: basis.K-1
+   for i=1: basis.K
+       exp_q[i]=exp((i-1)*(0.0-1.0im)*2*pi*q/basis.K)
+   end
 
-       #Create the Hamiltonian
-       Hq,HqBasis,HqRank = Block_Diagonal_Hamiltonian(basis, Cycles, CycleSize, NumOfCycles,c[:t],V,q)
-       EigenEnergies_q,VV = eig(Hq)
+   #Create the Hamiltonian
+   Hq,HqBasis,HqRank = Block_Diagonal_Hamiltonian(basis, Cycles, CycleSize, NumOfCycles,c[:t],V,q)
+   EigenEnergies_q,VV = eig(Hq)
 
-       for i_HqRank =1: HqRank
-           for j_HqRank =1: HqRank
-               for i_Translation =1: CycleSize[HqBasis[j_HqRank]]
-                   EigenVectors[Cycles[HqBasis[j_HqRank],i_Translation],i_HqRank+ HRank]+=exp_q[i_Translation]* VV[j_HqRank, i_HqRank]/sqrt(CycleSize[HqBasis[j_HqRank]])
-               end
+   for i_HqRank =1: HqRank
+       for j_HqRank =1: HqRank
+           for i_Translation =1: CycleSize[HqBasis[j_HqRank]]
+               EigenVectors[Cycles[HqBasis[j_HqRank],i_Translation],i_HqRank+ HRank]+=exp_q[i_Translation]* VV[j_HqRank, i_HqRank]/sqrt(CycleSize[HqBasis[j_HqRank]])
            end
-           EigenEnergies[i_HqRank+ HRank]= EigenEnergies_q[i_HqRank]
        end
+       EigenEnergies[i_HqRank+ HRank]= EigenEnergies_q[i_HqRank]
+   end
 
-       HRank += HqRank
+   HRank += HqRank
+end
+
+# express the energy eigenstates (n) in the spatial basis (α)
+for n=1:ll
+    for α=1:ll
+        Ψ0H[n]=Ψ0H[n]+conj(EigenVectors[α,n])*Ψ[α]
     end
+end
 
-    # express the energy eigenstates (n) in the spatial basis (α)
-    for n=1:ll
-        for α=1:ll
-            Ψ0H[n]=Ψ0H[n]+conj(EigenVectors[α,n])*Ψ[α]
-        end
-    end
+print(" Block_Diagonal_Hamiltonian finished\n ")
 
-    print(" Block_Diagonal_Hamiltonian finished\n ")
+# H = full_hamiltonian(basis, c[:t], V, boundary=boundary)
+# EigenEnergies,EigenVectors = eig(H)
+#
+# warn("eigs finish")
+# #print(EigenVectors, "\n ")
+#
+# for n=1:ll
+#     for α=1:ll
+#         wft0H0[n] = wft0H0[n] + conj(EigenVectors[α,n])*wft0[α]
+#     end
+# end
 
-    # H = full_hamiltonian(basis, c[:t], V, boundary=boundary)
-    # EigenEnergies,EigenVectors = eig(H)
-    #
-    # warn("eigs finish")
-    # #print(EigenVectors, "\n ")
-    #
-    # for n=1:ll
-    #     for α=1:ll
-    #         wft0H0[n] = wft0H0[n] + conj(EigenVectors[α,n])*wft0[α]
-    #     end
-    # end
+# for time in time_range
+#
+#     # Calculate the entropy
+#     wft0.=0.0+0.0im
+#     for α=1:ll
+#         for n=1:ll
+#             wft0[α] = wft0[α] + exp(-(0.0+1.0im)*time*EigenEnergies[n])*wft0H0[n]*(EigenVectors[α,n])
+#         end
+#     end
+#
+#     s3_particle = particle_entropy_mod(basis, Asize, wft0, site_max)
+#     write(f, " $(time)\t $(s3_particle[1])\t $(s3_particle[2]) \n")
+#     flush(f)
+# end
 
-    # for time in time_range
-    #
-    #     # Calculate the entropy
-    #     wft0.=0.0+0.0im
-    #     for α=1:ll
-    #         for n=1:ll
-    #             wft0[α] = wft0[α] + exp(-(0.0+1.0im)*time*EigenEnergies[n])*wft0H0[n]*(EigenVectors[α,n])
-    #         end
-    #     end
-    #
-    #     s3_particle = particle_entropy_mod(basis, Asize, wft0, site_max)
-    #     write(f, " $(time)\t $(s3_particle[1])\t $(s3_particle[2]) \n")
-    #     flush(f)
-    # end
+# Calculate the entropy if we start from t = 0
+if abs(time_range[1]) < 1.0E-12
 
-    # Calculate the entropy if we start from t = 0
-    if abs(time_range[1]) < 1.0E-12
-        s3_particle,obdm[:,1] = particle_entropy_mod(basis, Asize, Ψ, site_max)
-
-        # output entanglement
-        write(f, @sprintf "%12.6f%24.12E%24.12E\n" time_range[1] s3_particle[1] s3_particle[2])
-        time_start = 2
+    if c[:obdm] && Asize == 1
+        s_particle,obdm[:,1] = particle_entropy_mod(basis, Asize, Ψ, site_max,c[:obdm])
     else
-        time_start = 1
+        s_particle = particle_entropy_mod(basis, Asize, Ψ, site_max,c[:obdm])
     end
-    time_index = time_start
 
-    for time in time_range[time_start:end]
+    write(f_part, @sprintf "%12.6f%24.12E%24.12E\n" time_range[1] s_particle[1] s_particle[2])
+    flush(f_part)
+    time_start = 2
 
-        # Calculate the time evolved wave function
-        Ψ.=0.0+0.0im
-        for α=1:ll
-            for n=1:ll
-                Ψ[α] = Ψ[α] + exp(-(0.0+1.0im)*time*EigenEnergies[n])*Ψ0H[n]*EigenVectors[α,n]
-            end
+    if c[:spatial]
+        s_spatial = spatial_entropy(basis, ℓsize, Ψ)
+        write(f_spat, @sprintf "%12.6f%24.12E%24.12E\n" time_range[1] s_spatial[1] s_spatial[2])
+        flush(f_spat)
+    end
+
+else
+    time_start = 1
+end
+time_index = time_start
+
+for time in time_range[time_start:end]
+
+    # Calculate the time evolved wave function
+    Ψ.=0.0+0.0im
+    for α=1:ll
+        for n=1:ll
+            Ψ[α] = Ψ[α] + exp(-(0.0+1.0im)*time*EigenEnergies[n])*Ψ0H[n]*EigenVectors[α,n]
         end
-
-#        s2_spatial, s2_operational = spatial_entropy(basis, Asize, wft0)
-
-        Ψ.= Ψ./sqrt(dot(Ψ,Ψ))
-        s3_particle,obdm[:,time_index] = particle_entropy_mod(basis, Asize, Ψ, site_max)
-
-        write(f, @sprintf "%12.6f%24.12E%24.12E\n" time s3_particle[1] s3_particle[2])
-        flush(f)
-        time_index += 1
     end
+
+    Ψ.= Ψ./sqrt(dot(Ψ,Ψ))
+
+    if c[:spatial]
+        s_spatial = spatial_entropy(basis, ℓsize, Ψ)
+        write(f_spat, @sprintf "%12.6f%24.12E%24.12E\n" time s_spatial[1] s_spatial[2])
+        flush(f_spat)
+    end
+
+    if c[:obdm] && Asize == 1
+        s_particle,obdm[:,time_index] = particle_entropy_mod(basis, Asize, Ψ, site_max,c[:obdm])
+    else
+        s_particle = particle_entropy_mod(basis, Asize, Ψ, site_max,c[:obdm])
+    end
+
+    write(f_part, @sprintf "%12.6f%24.12E%24.12E\n" time s_particle[1] s_particle[2])
+    flush(f_part)
+    time_index += 1
+end
+
+close(f_part)
+
+if c[:spatial]
+    close(f_spat)
 end
 
 #_______________________________________________________________________________
 # output the time dependent OBDM to disk
-if Asize == 1
+if c[:obdm] && Asize == 1
     obdm_name = @sprintf "obdm_%02d_%02d_%+5.3f_%+5.3f_%6.4f.dat" M N V0 V Δt
     open(obdm_name, "w") do obdm_f
         write(obdm_f, @sprintf "#%11s" "|i-j|")
