@@ -1,8 +1,9 @@
 """
 Calculate the particle entanglement entropy for a subset A, using the SVD on (A^*)A First test.
 """
-function particle_entropy_mod(basis::AbstractSzbasis, Asize::Int, d::Vector{Complex128}, MaxOccupation::Int)
-    #SRen = Array(Float64, 3)
+function particle_entropy_mod(basis::AbstractSzbasis, Asize::Int, d::Vector{Complex128}, MaxOccupation::Int,
+    measure_obdm::Bool)
+
     SRen = Array{Float64}(3)
     DimA=Int64
     DimB=Int64
@@ -39,11 +40,14 @@ function particle_entropy_mod(basis::AbstractSzbasis, Asize::Int, d::Vector{Comp
     braA = Array{Int}(L)
     braB = Array{Int}(L)
     bra = Array{Int}(L)
+
     # Matrix A
     Amatrix = zeros(Complex128, DimA, DimB)
+
     # Weight factors
     Wa=factorial(Asize)
     Wb=factorial(Bsize)
+
     # Normalization coefficient
     norm=sqrt(Wa*Wb/factorial(basis.N))
 
@@ -63,9 +67,9 @@ function particle_entropy_mod(basis::AbstractSzbasis, Asize::Int, d::Vector{Comp
     end
 
     # construct the spatial OBDM
-    obdm = zeros(Float64, DimA)
+    if measure_obdm && Asize == 1
 
-    if Asize == 1
+        obdm = zeros(Float64, DimA)
         AdAmatrix = zeros(Complex128, DimAdA, DimAdA)
 
         for i=1:DimA
@@ -82,21 +86,7 @@ function particle_entropy_mod(basis::AbstractSzbasis, Asize::Int, d::Vector{Comp
        for i=1:DimA
            obdm[i] = real(AdAmatrix[i,Int(L/2)])
        end
-
    end
-
-   #print(trace(AdAmatrix))
-   #AdAmatrix = AdAmatrix/trace(AdAmatrix)
-
-   # write it to disk
-
-   # open( "Corr_pbcL14N07_int_strong.dat", "w") do f
-   #     write(f, "# i-j Corr_cal\n")
-   #     for i=1:DimA
-   #         write(f, "$(i-Int(L/2)) $(real(AdAmatrix[i,Int(L/2)])) $(Corr)\n")
-   #     end
-   #     flush(f)
-   #  end
 
     #S = svdvals!(AdAmatrix)
     S = svdvals!(Amatrix)
@@ -116,6 +106,13 @@ function particle_entropy_mod(basis::AbstractSzbasis, Asize::Int, d::Vector{Comp
     SRen[1]=-SRen[1]-LogNn
     SRen[2]=-log(sum(S.^2))-LogNn
     SRen[3]=-log(sum(S.^3))/2-LogNn
+
     #warn(" AdA eigenvalue are", S)
-    return SRen,obdm
+
+    if measure_obdm
+        return SRen,obdm
+    else
+        return SRen
+    end
+
 end

@@ -18,8 +18,6 @@ function spatial_entropy(basis::AbstractSzbasis, A, d::Vector{Complex128})
     norms = zeros(Float64, basis.N+1)
 
     for (i, bra) in enumerate(basis)
-        #braA = sub(bra, A)
-        #braB = sub(bra, B)
         braA = view(bra, A)
         braB = view(bra, B)
 
@@ -45,29 +43,28 @@ function spatial_entropy(basis::AbstractSzbasis, A, d::Vector{Complex128})
     if err_sp > 1e-12
         warn("RDM eigenvalue error ", err_sp)
     end
-    sumS1=0.0
-    for k=1: length(S_sp)
+    S1_sp = 0.0
+    for k=1:length(S_sp)
         if abs(S_sp[k])>0
-            sumS1 +=abs(S_sp[k])^2*log(abs(S_sp[k])^2)
-	end
+            S1_sp -= abs(S_sp[k])^2*log(abs(S_sp[k])^2)
+	       end
     end
-   S2_sp=-sumS1
-    #S2_sp = -log(sum(S_sp.^4))
+    S2_sp = -log(abs(sum(S_sp.^4)))
 
     # Operational.
-    Ss_op = [S / sqrt(n) for (S, n) in zip(Ss_raw, norms)]
-    errs_op = [abs(sum(S.^2) - 1.0) for S in Ss_op]
+    #Ss_op = [S / sqrt(n) for (S, n) in zip(Ss_raw, norms)]
+    #errs_op = [abs(sum(S.^2) - 1.0) for S in Ss_op]
 
-    if any(errs_op .> 1e-12)
+    #if any(errs_op .> 1e-12)
       #  warn("RDM  eigenvalue error ", maximum(errs_op))
      #   warn("RDM eigenvalue error ", S2_sp)
 
-    end
+    #end
 
-    S2s_op = [-log(sum(S.^4)) for S in Ss_op]
-    S2_op = dot(norms, S2s_op)
+    #S2s_op = [-log(sum(S.^4)) for S in Ss_op]
+    #S2_op = dot(norms, S2s_op)
 
-    S2_sp, S2_op
+    S1_sp, S2_sp
 end
 
 spatial_entropy(basis::AbstractSzbasis, Asize::Int, d::Vector{Complex128}) = spatial_entropy(basis, 1:Asize, d)
