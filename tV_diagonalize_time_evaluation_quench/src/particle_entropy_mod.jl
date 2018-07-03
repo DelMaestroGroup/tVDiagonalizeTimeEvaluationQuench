@@ -109,7 +109,7 @@ function particle_entropy_mod(basis::AbstractSzbasis, Asize::Int, d::Vector{Comp
 
     #warn(" AdA eigenvalue are", S)
 
-    if measure_obdm
+    if measure_obdm && Asize==1
         return SRen,obdm
     else
         return SRen
