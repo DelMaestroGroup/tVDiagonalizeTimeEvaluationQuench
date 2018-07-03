@@ -191,14 +191,14 @@ end
 
 # Output file
 if c[:out] === nothing
-     output = @sprintf "partEE_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%1d.dat" M N V0 V Δt Asize
+     output = @sprintf "partEE_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%5.3f_%5.3f_%1d.dat" M N V0 V Δt time_range[1] time_range[end] Asize
 else
      output = c[:out]
 end
 
 # output file if we are measuring the spatial entanglement entropy
 if c[:spatial]
-     spat_output = @sprintf "spatEE_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%1d.dat" M N V0 V Δt Asize
+     spat_output = @sprintf "spatEE_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%5.3f_%5.3f_%1d.dat" M N V0 V Δt time_range[1] time_range[end] Asize
 end
 
 # are we restricting the number of particles per site?
@@ -384,7 +384,7 @@ end
 #_______________________________________________________________________________
 # output the time dependent OBDM to disk
 if c[:obdm] && Asize == 1
-    obdm_name = @sprintf "obdm_%02d_%02d_%+5.3f_%+5.3f_%6.4f.dat" M N V0 V Δt
+    obdm_name = @sprintf "obdm_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%5.3f_%5.3f.dat" M N V0 V Δt time_range[1] time_range[end]
     open(obdm_name, "w") do obdm_f
         write(obdm_f, @sprintf "#%11s" "|i-j|")
         for time in time_range
