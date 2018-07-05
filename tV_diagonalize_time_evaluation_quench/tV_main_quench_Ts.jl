@@ -191,14 +191,14 @@ end
 
 # Output file
 if c[:out] === nothing
-     output = @sprintf "partEE_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%5.3f_%5.3f_%1d.dat" M N V0 V Δt time_range[1] time_range[end] Asize
+     output = @sprintf "partEE_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%06.3f_%06.3f_%1d.dat" M N V0 V Δt time_range[1] time_range[end] Asize
 else
      output = c[:out]
 end
 
 # output file if we are measuring the spatial entanglement entropy
 if c[:spatial]
-     spat_output = @sprintf "spatEE_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%5.3f_%5.3f_%1d.dat" M N V0 V Δt time_range[1] time_range[end] Asize
+     spat_output = @sprintf "spatEE_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%06.3f_%06.3f_%1d.dat" M N V0 V Δt time_range[1] time_range[end] Asize
 end
 
 # are we restricting the number of particles per site?
@@ -250,6 +250,7 @@ end
 
 # Create the Hamiltonian
 H = sparse_hamiltonian(basis, c[:t], μ, V0, boundary=boundary)
+#println("size(H) = ",Base.summarysize(H))
 print(" sparse_hamiltonian finish\n ")
 
 # H0 = full_hamiltonian(basis, c[:t], V0,boundary=boundary)
@@ -261,6 +262,7 @@ print(" sparse_hamiltonian finish\n ")
 
 # I don't understand why this copying is necessary, it is a type conversion thing
 Ψ = eigs(H, nev=1, which=:SR,tol=1e-13,v0=getΨ0_trial(c[:t],V0,boundary,basis))[2][1:ll].*ones(Complex128,ll)
+#println("size(complex) = ", Base.summarysize(Ψ[1]))
 
 # Exploit symmetries of the hamiltonian to perform a bloack diagonalization
 Cycles, CycleSize, NumOfCycles = Translational_Symmetry_Cycles(basis)
@@ -286,6 +288,7 @@ for q =0: basis.K-1
    HRank += HqRank
 end
 
+#println("size(EV) = ", Base.summarysize(EigenVectors))
 # express the energy eigenstates (n) in the spatial basis (α)
 for n=1:ll
     for α=1:ll
@@ -384,7 +387,7 @@ end
 #_______________________________________________________________________________
 # output the time dependent OBDM to disk
 if c[:obdm] && Asize == 1
-    obdm_name = @sprintf "obdm_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%5.3f_%5.3f.dat" M N V0 V Δt time_range[1] time_range[end]
+    obdm_name = @sprintf "obdm_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%06.3f_%06.3f.dat" M N V0 V Δt time_range[1] time_range[end]
     open(obdm_name, "w") do obdm_f
         write(obdm_f, @sprintf "#%11s" "|i-j|")
         for time in time_range

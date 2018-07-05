@@ -43,6 +43,7 @@ function particle_entropy_mod(basis::AbstractSzbasis, Asize::Int, d::Vector{Comp
 
     # Matrix A
     Amatrix = zeros(Complex128, DimA, DimB)
+    #println("size(Amatrix) = ",Base.summarysize(Amatrix))
 
     # Weight factors
     Wa=factorial(Asize)
@@ -71,6 +72,7 @@ function particle_entropy_mod(basis::AbstractSzbasis, Asize::Int, d::Vector{Comp
 
         obdm = zeros(Float64, DimA)
         AdAmatrix = zeros(Complex128, DimAdA, DimAdA)
+        #println("size(AdAmatrix) = ",Base.summarysize(AdAmatrix))
 
         for i=1:DimA
             for j=i:DimA
