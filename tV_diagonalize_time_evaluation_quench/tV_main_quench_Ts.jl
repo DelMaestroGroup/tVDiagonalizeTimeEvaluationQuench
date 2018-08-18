@@ -219,6 +219,7 @@ EigenEnergie=Complex128
 EigenVector= zeros(Complex128, ll)
 #  Initial wave function in terms of the spatial basis
 Ψ=zeros(Complex128, ll)
+Ψn=zeros(Complex128, ll)
 # the one body density matrix
 obdm=zeros(Float64,M,length(time_range))
 #  wave function in terms of the spatial basis at time t
@@ -286,14 +287,14 @@ for q =0: basis.K-1
        end
        #println("size(EV) = ", Base.summarysize(EigenVector))
        EigenEnergie= EigenEnergies_q[i_HqRank]
-        for (it, time) in enumerate(time_range)
+       for α=1:ll
+            Ψn[α] =conj(EigenVector[α])*Ψ[α]
+       end
+       for (it, time) in enumerate(time_range)
           TimeEvolutionFactor=exp(-(0.0+1.0im)*time*EigenEnergie)
-           for α=1:ll
-               for β=1:ll
-               Ψt[α,it]=Ψt[α,it]+conj(EigenVector[β])*Ψ[β]*EigenVector[α]* TimeEvolutionFactor
-               end
-           end
-           
+          for α=1:ll
+             Ψt[α,it]=Ψt[α,it]+Ψn[α]*EigenVector[α]*TimeEvolutionFactor
+          end        
        end
        EigenVector.=0.0+0.0im
    end 
