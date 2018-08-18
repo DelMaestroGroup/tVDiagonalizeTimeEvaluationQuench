@@ -167,19 +167,16 @@ end
 if c[:time_step] === nothing
     if c[:time_num] === nothing
         time_range = c[:time_min]:0.5:c[:time_max]
-        time_num=length(time_range) 
     else
         if c[:time_log]
             time_range = logspace(c[:time_min], c[:time_max], c[:time_num])
         else
             time_range = linspace(c[:time_min], c[:time_max], c[:time_num])
         end
-        time_num=c[:time_num]
     end
 else
     if c[:time_num] === nothing
         time_range = c[:time_min]:c[:time_step]:c[:time_max]
-        time_num=length(time_range) 
     else
         println("--time-step and --time-num may not both be supplied")
         exit(1)
@@ -214,17 +211,18 @@ end
 #_______________________________________________________________________________
 ll=length(basis)
 μ=zeros(Float64, M)
+EigenVectors= zeros(Complex128, ll, ll)
+EigenEnergies=zeros(Complex128,ll)
 exp_q=zeros(Complex128, basis.K)
-EigenEnergie=Complex128
-EigenVector= zeros(Complex128, ll)
-#  Initial wave function in terms of the spatial basis
+
+#  wave function in terms of the spatial basis
 Ψ=zeros(Complex128, ll)
-Ψn=zeros(Complex128, ll)
+
+#Initial wave function in terms of the eigen basis
+Ψ0H=zeros(Complex128, ll)
+
 # the one body density matrix
 obdm=zeros(Float64,M,length(time_range))
-#  wave function in terms of the spatial basis at time t
-Ψt=zeros(Complex128, ll, time_num)
-
 
 #_______________________________________________________________________________
 
@@ -268,11 +266,10 @@ print(" sparse_hamiltonian finish\n ")
 
 # Exploit symmetries of the hamiltonian to perform a bloack diagonalization
 Cycles, CycleSize, NumOfCycles = Translational_Symmetry_Cycles(basis)
-
 HRank=0
 for q =0: basis.K-1
    for i=1: basis.K
-       exp_q[i]=exp((i-1)*(0.0+1.0im)*2*pi*q/basis.K)
+       exp_q[i]=exp((i-1)*(0.0-1.0im)*2*pi*q/basis.K)
    end
 
    #Create the Hamiltonian
@@ -282,27 +279,25 @@ for q =0: basis.K-1
    for i_HqRank =1: HqRank
        for j_HqRank =1: HqRank
            for i_Translation =1: CycleSize[HqBasis[j_HqRank]]
-               EigenVector[Cycles[HqBasis[j_HqRank],i_Translation]]+=exp_q[i_Translation]* VV[j_HqRank, i_HqRank]/sqrt(CycleSize[HqBasis[j_HqRank]])
+               EigenVectors[Cycles[HqBasis[j_HqRank],i_Translation],i_HqRank+ HRank]+=exp_q[i_Translation]* VV[j_HqRank, i_HqRank]/sqrt(CycleSize[HqBasis[j_HqRank]])
            end
        end
-       #println("size(EV) = ", Base.summarysize(EigenVector))
-       EigenEnergie= EigenEnergies_q[i_HqRank]
-       for α=1:ll
-            Ψn[α] =conj(EigenVector[α])*Ψ[α]
-       end
-       for (it, time) in enumerate(time_range)
-          TimeEvolutionFactor=exp(-(0.0+1.0im)*time*EigenEnergie)
-          for α=1:ll
-             Ψt[α,it]=Ψt[α,it]+Ψn[α]*EigenVector[α]*TimeEvolutionFactor
-          end        
-       end
-       EigenVector.=0.0+0.0im
-   end 
-end   
+       EigenEnergies[i_HqRank+ HRank]= EigenEnergies_q[i_HqRank]
+   end
+
+   HRank += HqRank
+end
+
+#println("size(EV) = ", Base.summarysize(EigenVectors))
+# express the energy eigenstates (n) in the spatial basis (α)
+for n=1:ll
+    for α=1:ll
+        Ψ0H[n]=Ψ0H[n]+conj(EigenVectors[α,n])*Ψ[α]
+    end
+end
 
 print(" Block_Diagonal_Hamiltonian finished\n ")
 
-#____________________________________________________________
 # H = full_hamiltonian(basis, c[:t], V, boundary=boundary)
 # EigenEnergies,EigenVectors = eig(H)
 #
@@ -329,7 +324,7 @@ print(" Block_Diagonal_Hamiltonian finished\n ")
 #     write(f, " $(time)\t $(s3_particle[1])\t $(s3_particle[2]) \n")
 #     flush(f)
 # end
-#__________________________________________________________
+
 # Calculate the entropy if we start from t = 0
 if abs(time_range[1]) < 1.0E-12
 
@@ -354,22 +349,28 @@ else
 end
 time_index = time_start
 
+for time in time_range[time_start:end]
 
-for (it, time) in enumerate(time_range[time_start:end]) 
+    # Calculate the time evolved wave function
+    Ψ.=0.0+0.0im
+    for α=1:ll
+        for n=1:ll
+            Ψ[α] = Ψ[α] + exp(-(0.0+1.0im)*time*EigenEnergies[n])*Ψ0H[n]*EigenVectors[α,n]
+        end
+    end
 
-    Ψt[:,it].= Ψt[:,it]./sqrt(dot(Ψt[:,it],Ψt[:,it]))
-
+    Ψ.= Ψ./sqrt(dot(Ψ,Ψ))
 
     if c[:spatial]
-        s_spatial = spatial_entropy(basis, ℓsize, Ψt[:,it])
+        s_spatial = spatial_entropy(basis, ℓsize, Ψ)
         write(f_spat, @sprintf "%12.6f%24.12E%24.12E\n" time s_spatial[1] s_spatial[2])
         flush(f_spat)
     end
 
     if c[:obdm] && Asize == 1
-        s_particle,obdm[:,time_index] = particle_entropy_mod(basis, Asize, Ψt[:,it], site_max,c[:obdm])
+        s_particle,obdm[:,time_index] = particle_entropy_mod(basis, Asize, Ψ, site_max,c[:obdm])
     else
-        s_particle = particle_entropy_mod(basis, Asize, Ψt[:,it], site_max,c[:obdm])
+        s_particle = particle_entropy_mod(basis, Asize, Ψ, site_max,c[:obdm])
     end
 
     write(f_part, @sprintf "%12.6f%24.12E%24.12E\n" time s_particle[1] s_particle[2])
