@@ -1,5 +1,5 @@
 """
-Calculate the particle entanglement entropy for a subset A, using the SVD on (A^*)A First test.
+Calculate the particle entanglement entropy for a subset A, using the SVD on (A^*)A.
 """
 function particle_entropy_mod(basis::AbstractSzbasis, Asize::Int, d::Vector{Complex128}, MaxOccupation::Int,
     measure_obdm::Bool)

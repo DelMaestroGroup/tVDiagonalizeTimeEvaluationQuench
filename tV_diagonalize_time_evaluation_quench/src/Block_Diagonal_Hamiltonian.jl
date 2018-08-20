@@ -1,13 +1,11 @@
 """
-Create a list of occupation basis for each translational symmetry cycle for fermionic 1D chains with PBC/APBC.
+Create the translational symmetry block H_(q) of the hamiltonian of fermionic 1D chains with PBC/APBC.
 """
 function Block_Diagonal_Hamiltonian(basis::AbstractSzbasis, Cycles:: Array{Int64,2}, CycleSize:: Vector{Int64}, NumOfCycles::Int64, t::Float64, V::Float64, q::Int64)
 
-
-
     InvolvedCycles = Int64[]
     NumberOfInvolvedCycles = Int64
-
+    #Finding the involved cycles for q. 
     NumberOfInvolvedCycles=0
     for i=1: NumOfCycles
         if  q%(basis.K /CycleSize[i])==0
@@ -15,13 +13,15 @@ function Block_Diagonal_Hamiltonian(basis::AbstractSzbasis, Cycles:: Array{Int64
             push!(InvolvedCycles, i)
         end
     end
+    #Creating the block H_(q) of the hamiltonian.
     Hq=zeros(Complex128, NumberOfInvolvedCycles, NumberOfInvolvedCycles)
     exp_q=zeros(Complex128, basis.K)
     end_site = basis.K
     for i=1: basis.K
-        exp_q[i]=exp((i-1)*(0.0-1.0im)*2*pi*q/basis.K)
+        exp_q[i]=-t*exp((i-1)*(0.0-1.0im)*2*pi*q/basis.K)*0.5
     end
     for (i, CycleId) in enumerate(InvolvedCycles)
+        CycleSizeCycleId =CycleSize[CycleId]
         # Diagonal part
         Vsum = 0.0+0.0im
 
@@ -42,18 +42,13 @@ function Block_Diagonal_Hamiltonian(basis::AbstractSzbasis, Cycles:: Array{Int64
                     ket[site1] -= 1
                     ket[site2] += 1
                     if ket in basis
-                        factor = 1
-                        if j_next == 1
-                            factor = (1)^(basis.N-1)
-                        end
                         kId=serial_num(basis, ket)
                         for (k1, CycleId1) in enumerate(InvolvedCycles)
                             kIdcy =findfirst(Cycles[CycleId1,:], kId)
                             if kIdcy>0
-                                #phase=exp_q[div(basis.K ,CycleSize[CycleId1])*(kIdcy-1)+1]
-                                phase=exp_q[kIdcy]
-                                Hq[k1, i]+=-t* phase* CycleSize[CycleId] /CycleSize[CycleId1]*sqrt(CycleSize[CycleId1]/CycleSize[CycleId])/2.0
-                                Hq[i, k1]+=conj(-t* phase* CycleSize[CycleId] /CycleSize[CycleId1]*sqrt(CycleSize[CycleId1]/CycleSize[CycleId]))/2.0
+                                factor=exp_q[kIdcy]*sqrt(CycleSizeCycleId/CycleSize[CycleId1])
+                                Hq[k1, i]+= factor
+                                Hq[i, k1]+=conj(factor)
 
                             end
                         end
