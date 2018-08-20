@@ -10,8 +10,9 @@ export
     sparse_hamiltonian,
     spatial_entropy,
     particle_entropy_mod,
-    Translational_Symmetry_Cycles,
+    Translational_Reflection_Symmetry_Cycles,
     Block_Diagonal_Hamiltonian,
+    Block_Diagonal_Hamiltonian_Reflection,
     full_hamiltonian
 """
 Boundary conditions.
@@ -23,7 +24,8 @@ Boundary conditions.
 include("sparse_hamiltonian.jl")
 include("spatial_entropy.jl")
 include("particle_entropy_mod.jl")
-include("Translational_Symmetry_Cycles.jl")
+include("Translational_Reflection_Symmetry_Cycles.jl")
 include("Block_Diagonal_Hamiltonian.jl")
+include("Block_Diagonal_Hamiltonian_Reflection.jl")
 include("full_hamiltonian.jl")
 end
