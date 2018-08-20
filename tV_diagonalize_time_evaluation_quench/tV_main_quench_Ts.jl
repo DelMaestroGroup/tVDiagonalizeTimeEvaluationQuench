@@ -266,6 +266,12 @@ print(" sparse_hamiltonian finish\n ")
 Ψ = eigs(H, nev=1, which=:SR,tol=1e-13,v0=getΨ0_trial(c[:t],V0,boundary,basis))[2][1:ll].*ones(Complex128,ll)
 #println("size(complex) = ", Base.summarysize(Ψ[1]))
 
+#Random state test
+#srand(1234)
+#Ψ=rand(Complex128,ll)
+
+Ψ.= Ψ./sqrt(dot(Ψ,Ψ))
+
 # Exploit symmetries of the hamiltonian to perform a bloack diagonalization
 Cycles, CycleSize, NumOfCycles = Translational_Symmetry_Cycles(basis)
 
@@ -353,13 +359,13 @@ if abs(time_range[1]) < 1.0E-12
 else
     time_start = 1
 end
+time_index = time_start
 
-# do we start from the 1st or 2nd time step?
-it = time_start
 
-for time in time_range[time_start:end] 
+for (it, time) in enumerate(time_range[time_start:end]) 
 
     Ψt[:,it].= Ψt[:,it]./sqrt(dot(Ψt[:,it],Ψt[:,it]))
+
 
     if c[:spatial]
         s_spatial = spatial_entropy(basis, ℓsize, Ψt[:,it])
@@ -368,14 +374,14 @@ for time in time_range[time_start:end]
     end
 
     if c[:obdm] && Asize == 1
-        s_particle,obdm[:,it] = particle_entropy_mod(basis, Asize, Ψt[:,it], site_max,c[:obdm])
+        s_particle,obdm[:,time_index] = particle_entropy_mod(basis, Asize, Ψt[:,it], site_max,c[:obdm])
     else
         s_particle = particle_entropy_mod(basis, Asize, Ψt[:,it], site_max,c[:obdm])
     end
 
     write(f_part, @sprintf "%12.6f%24.12E%24.12E\n" time s_particle[1] s_particle[2])
     flush(f_part)
-    it += 1
+    time_index += 1
 end
 
 close(f_part)
