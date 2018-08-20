@@ -266,6 +266,12 @@ print(" sparse_hamiltonian finish\n ")
 Ψ = eigs(H, nev=1, which=:SR,tol=1e-13,v0=getΨ0_trial(c[:t],V0,boundary,basis))[2][1:ll].*ones(Complex128,ll)
 #println("size(complex) = ", Base.summarysize(Ψ[1]))
 
+#Random state test
+#srand(1234)
+#Ψ=rand(Complex128,ll)
+
+Ψ.= Ψ./sqrt(dot(Ψ,Ψ))
+
 # Exploit symmetries of the hamiltonian to perform a bloack diagonalization
 Cycles, CycleSize, NumOfCycles = Translational_Symmetry_Cycles(basis)
 
