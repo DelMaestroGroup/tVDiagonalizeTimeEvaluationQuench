@@ -353,13 +353,13 @@ if abs(time_range[1]) < 1.0E-12
 else
     time_start = 1
 end
-time_index = time_start
 
+# do we start from the 1st or 2nd time step?
+it = time_start
 
-for (it, time) in enumerate(time_range[time_start:end]) 
+for time in time_range[time_start:end] 
 
     Ψt[:,it].= Ψt[:,it]./sqrt(dot(Ψt[:,it],Ψt[:,it]))
-
 
     if c[:spatial]
         s_spatial = spatial_entropy(basis, ℓsize, Ψt[:,it])
@@ -368,14 +368,14 @@ for (it, time) in enumerate(time_range[time_start:end])
     end
 
     if c[:obdm] && Asize == 1
-        s_particle,obdm[:,time_index] = particle_entropy_mod(basis, Asize, Ψt[:,it], site_max,c[:obdm])
+        s_particle,obdm[:,it] = particle_entropy_mod(basis, Asize, Ψt[:,it], site_max,c[:obdm])
     else
         s_particle = particle_entropy_mod(basis, Asize, Ψt[:,it], site_max,c[:obdm])
     end
 
     write(f_part, @sprintf "%12.6f%24.12E%24.12E\n" time s_particle[1] s_particle[2])
     flush(f_part)
-    time_index += 1
+    it += 1
 end
 
 close(f_part)
