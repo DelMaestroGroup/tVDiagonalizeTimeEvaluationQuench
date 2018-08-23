@@ -1,4 +1,4 @@
-# Renyi entanglement entropy of the t-V Model after a quantum quench
+# Renyi entanglement entropy of the t-V Model at half-filling after a quantum quench
 
 push!(LOAD_PATH, joinpath(dirname(@__FILE__), "src"))
 using tVDiagonalize
@@ -68,6 +68,13 @@ s.autofix_names = true
     "--spatial"
         help = "output the spatial entanglement entropy for ℓ = M/2"
         action = :store_true
+    "--Allqs"
+        help = "must be used, if the initial state is not an eigenstate of the one site translation operator with a unity eigenvalue (q=0)"
+        action = :store_true
+    "--Allps"
+        help = "must be used, if the initial state is not eigenstate of the particle-hole-exchange operator with a unity eigenvalue (p=1)"
+        action = :store_true
+
 end
 add_arg_group(s, "boundary conditions")
 @add_arg_table s begin
@@ -143,6 +150,10 @@ c = parsed_args = parse_args(ARGS, s, as_symbols=true)
 const M = c[:M]
 # Number of particles
 const N = c[:N]
+if M!=2N
+    println("Not at half-filling: the number of sites =", M," and the number of particles =",N )
+    exit(1)
+end
 
 # Site occupation restriction
 const site_max = c[:site_max]
@@ -210,6 +221,9 @@ if site_max === nothing
 else
     const basis = RestrictedSzbasis(M, N, site_max)
 end
+q0 = c[:Allqs] ? 1 : 0
+p1 = c[:Allps] ? 1 : -1
+
 
 #_______________________________________________________________________________
 ll=length(basis)
@@ -224,7 +238,7 @@ EigenVector= zeros(Complex128, ll)
 obdm=zeros(Float64,M,length(time_range))
 #  wave function in terms of the spatial basis at time t
 Ψt=zeros(Complex128, ll, time_num)
-
+TimeEvolutionFactor=zeros(Complex128, time_num)
 
 #_______________________________________________________________________________
 
@@ -248,7 +262,6 @@ if c[:spatial]
     write(f_spat,@sprintf "#%11s%24s%24s\n" "time (tJ)" "S₁(ℓ=$(ℓsize))" "S₂(ℓ=$(ℓsize))")
 end
 
-#_______________________________________________________________________________
 # Create the Hamiltonian
 H = sparse_hamiltonian(basis, c[:t], μ, V0, boundary=boundary)
 #println("size(H) = ",Base.summarysize(H))
@@ -270,42 +283,39 @@ print(" sparse_hamiltonian finish\n ")
 #Ψ=rand(Complex128,ll)
 
 Ψ.= Ψ./sqrt(dot(Ψ,Ψ))
+
 # Exploit symmetries of the hamiltonian to perform a bloack diagonalization
 Cycles, CycleSize, NumOfCycles, CPH =Translational_PH_Symmetry_Cycles(basis)
 
-for q =0: basis.K-1
+for q =0: (basis.K-1)*q0
    for i=1: basis.K
        exp_q[i]=exp((i-1)*(0.0+1.0im)*2*pi*q/basis.K)
    end
 
-   for P in [1,-1]
+   for P=1:-2:-1*p1 
       #Create the Hamiltonian
       Hq,HqBasis,HqRank = Block_Diagonal_Hamiltonian_PH(basis, Cycles, CycleSize, NumOfCycles, CPH, c[:t],V,q,P)
       EigenEnergies_q,VV = eig(Hq)
+
       for i_HqRank =1: HqRank
          for j_HqRank =1: HqRank
-            CycleSizeij = CPH[HqBasis[j_HqRank]] ? 2*CycleSize[HqBasis[j_HqRank]] :  CycleSize[HqBasis[j_HqRank]]
-            for i_Translation =1: CycleSize[HqBasis[j_HqRank]]
-               EigenVector[Cycles[HqBasis[j_HqRank],i_Translation]]+=exp_q[i_Translation]* VV[j_HqRank, i_HqRank]/sqrt(CycleSizeij)
-            end
-            if CPH[HqBasis[j_HqRank]]
-               for i_Translation =1: CycleSize[HqBasis[j_HqRank]+1]
-                  EigenVector[Cycles[HqBasis[j_HqRank]+1,i_Translation]]+=P*exp_q[i_Translation]* VV[j_HqRank, i_HqRank]/sqrt(CycleSizeij)
-               end
+            CycleId=HqBasis[j_HqRank]
+            CycleSizeijloop =CycleSize[CycleId]
+            CycleSizeij = CPH[CycleId] ? 2* CycleSizeijloop :  CycleSizeijloop
+            factor= VV[j_HqRank, i_HqRank]/sqrt(CycleSizeij)
+            EigenVector[Cycles[CycleId ,1: CycleSizeijloop]]=exp_q[1: CycleSizeijloop]* factor
+            if CPH[CycleId]
+               CycleId+=1
+               factor*=P
+               EigenVector[Cycles[CycleId ,1: CycleSizeijloop]]=exp_q[1: CycleSizeijloop]* factor
             end
          end
          #println("size(EV) = ", Base.summarysize(EigenVector))
          EigenEnergie= EigenEnergies_q[i_HqRank]
-         Ψn=0.0+0.0im
-         for α=1:ll
-            Ψn =Ψn+conj(EigenVector[α])*Ψ[α]
-         end
-            for (it, time) in enumerate(time_range)
-               TimeEvolutionFactor=exp(-(0.0+1.0im)*time*EigenEnergie)
-               for α=1:ll
-                  Ψt[α,it]=Ψt[α,it]+Ψn*EigenVector[α]* TimeEvolutionFactor
-               end
-            end
+         Ψn =dot(EigenVector,Ψ)
+         TimeEvolutionFactor.=exp.(-(0.0+1.0im)* time_range*EigenEnergie)*Ψn
+         Ψt+=kron(EigenVector,transpose(TimeEvolutionFactor))
+
          EigenVector.=0.0+0.0im
       end
    end
@@ -364,6 +374,8 @@ else
 end
 
 # do we start from the 1st or 2nd time step?
+it = time_start
+
 for time in time_range[time_start:end] 
 
     Ψt[:,it].= Ψt[:,it]./sqrt(dot(Ψt[:,it],Ψt[:,it]))
