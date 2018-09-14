@@ -1,4 +1,4 @@
-module tVDiagonalize
+ module tVDiagonalize
 
 using JeszenszkiBasis
 
@@ -9,12 +9,10 @@ export
 
     sparse_hamiltonian,
     spatial_entropy,
-    particle_entropy_mod,
     particle_entropy_Ts,
     Translational_Symmetry_Cycles,
-    Translational_PH_Symmetry_Cycles,
-    Block_Diagonal_Hamiltonian,
-    Block_Diagonal_Hamiltonian_PH,
+    Symmetry_Cycles_q0R1PH1,
+    Block_Diagonal_Hamiltonian_q0R1PH1,
     full_hamiltonian
 """
 Boundary conditions.
@@ -25,11 +23,9 @@ Boundary conditions.
 
 include("sparse_hamiltonian.jl")
 include("spatial_entropy.jl")
-include("particle_entropy_mod.jl")
 include("particle_entropy_Ts.jl")
 include("Translational_Symmetry_Cycles.jl")
-include("Translational_PH_Symmetry_Cycles.jl")
-include("Block_Diagonal_Hamiltonian.jl")
-include("Block_Diagonal_Hamiltonian_PH.jl")
+include("Symmetry_Cycles_q0R1PH1.jl")
+include("Block_Diagonal_Hamiltonian_q0R1PH1.jl")
 include("full_hamiltonian.jl")
 end
