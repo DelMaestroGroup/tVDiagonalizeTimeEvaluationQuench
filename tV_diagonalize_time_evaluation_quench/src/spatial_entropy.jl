@@ -3,7 +3,7 @@ Calculate both the spatial and the operational entanglement entropies of a
 region A, using the SVD. The latter is the "entanglement of particles"
 introduced by Wiseman and Vaccaro in 2003.
 """
-function spatial_entropy(basis::AbstractSzbasis, A, d::Vector{Complex128})
+function spatial_entropy(basis::AbstractSzbasis, A, d::Vector{Complex128},InvCycles_Id::Vector{Int64})
     B = setdiff(1:basis.K, A)
 
     # Matrices to SVD
@@ -15,7 +15,7 @@ function spatial_entropy(basis::AbstractSzbasis, A, d::Vector{Complex128})
         push!(Amatrices, zeros(Complex128, DimA, DimB))
     end
 
-    norms = zeros(Float64, basis.N+1)
+#    norms = zeros(Float64, basis.N+1)
 
     for (i, bra) in enumerate(basis)
         braA = view(bra, A)
@@ -24,15 +24,15 @@ function spatial_entropy(basis::AbstractSzbasis, A, d::Vector{Complex128})
         row = serial_num(basis, length(A), sum(braA), braA)
         col = serial_num(basis, length(B), sum(braB), braB)
 
-        Amatrices[1 + sum(braA)][row, col] = d[i]
-        norms[1 + sum(braA)] += abs(d[i])^2
+        Amatrices[1 + sum(braA)][row, col] = d[InvCycles_Id[i]]
+#        norms[1 + sum(braA)] += abs(d[i])^2
     end
 
-    norm_err = abs(sum(norms) - 1.0)
+#    norm_err = abs(sum(norms) - 1.0)
 
-    if norm_err > 1e-12
-        warn("norm error ", norm_err)
-    end
+#    if norm_err > 1e-12
+#        warn("norm error ", norm_err)
+#    end
 
     Ss_raw = [svdvals(Amatrix) for Amatrix in Amatrices]
 
@@ -67,4 +67,4 @@ function spatial_entropy(basis::AbstractSzbasis, A, d::Vector{Complex128})
     S1_sp, S2_sp
 end
 
-spatial_entropy(basis::AbstractSzbasis, Asize::Int, d::Vector{Complex128}) = spatial_entropy(basis, 1:Asize, d)
+spatial_entropy(basis::AbstractSzbasis, Asize::Int, d::Vector{Complex128},InvCycles_Id::Vector{Int64}) = spatial_entropy(basis, 1:Asize, d, InvCycles_Id)
