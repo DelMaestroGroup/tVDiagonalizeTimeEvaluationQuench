@@ -1,13 +1,13 @@
 """
 Calculate the particle entanglement entropy for an eigenstate of the one-site-translation operator with eigenvalue q=0.
 """
-function particle_entropy_Ts(basis::AbstractSzbasis, Asize::Int, d::Vector{Complex128}, MaxOccupation::Int, measure_obdm::Bool)
+function particle_entropy_Ts(basis::AbstractSzbasis, Asize::Int, d::Vector{Complex128}, MaxOccupation::Int, measure_obdm::Bool, AmatrixStructure:: Array{Int64,3})
 
-    SRen = Array{Float64}(3)
+    SRen = zeros(Float64,3)
     DimA=Int64
     DimB=Int64
     DimAdA=Int64
-    for x = [:fN,:Wa,:Wb,:Flips,:SumFlips]
+    for x = [:fN,:Wa,:Wb]
        @eval $x = Int64
     end
     norm= Float64
@@ -19,7 +19,9 @@ function particle_entropy_Ts(basis::AbstractSzbasis, Asize::Int, d::Vector{Compl
     if Asize>Bsize
         Asize,Bsize=Bsize,Asize
     end
-
+    if Asize==0
+       return  SRen
+    end
     # Dimensions of partition Hilbert spaces
     facto=1.0
     for i=1:Asize
@@ -37,15 +39,11 @@ function particle_entropy_Ts(basis::AbstractSzbasis, Asize::Int, d::Vector{Compl
     const basisB = RestrictedSzbasis(L, Bsize, MaxOccupation)
 
     CyclesA, CycleSizeA, NumOfCyclesA =Translational_Symmetry_Cycles(basisA)
+CyclesA=0
     CyclesB, CycleSizeB, NumOfCyclesB =Translational_Symmetry_Cycles(basisB)
-    # using Int32 instead of Int64 in A matrix Structure works up to L=32 and N=16.
-    AmatrixStructure=zeros(Int64,NumOfCyclesA, NumOfCyclesB,L)
+CyclesB=0
 
     λ=Array{Float64}(NumOfCyclesA*L)
-
-    braA = Array{Int}(L)
-    braB = Array{Int}(L)
-    bra = Array{Int}(L)
 
     # Weight factors
     Wa=factorial(Asize)
@@ -56,40 +54,6 @@ function particle_entropy_Ts(basis::AbstractSzbasis, Asize::Int, d::Vector{Compl
     Aparity= Asize%2
     Bparity= Bsize%2
     element= Complex128
-
-   # construct the AmatrixStructure
-    OcupationOverlap =MaxOccupation+1
-    for i=1: NumOfCyclesB
-        braB=basisB[CyclesB[i,1]] 
-        for j=1: NumOfCyclesA 
-            minSize=CycleSizeA[j]
-            maxSize=CycleSizeB[i]
-            if CycleSizeA[j]>CycleSizeB[i]
-                minSize,maxSize=maxSize, minSize
-            end
-            phase0=1
-            for k=1: minSize             
-                braA= basisA[CyclesA[j,k]]
-                bra=braA+braB
-                    # absorbing phase changes due to a particle crossing the system boundary.
-                    if Bparity==1 && j>1
-                        phase0*= 1-2*braA[1]
-                    end
-                Overlap =findfirst(bra, OcupationOverlap)
-                if Overlap < 1 #(Overlap==0)
-                    Flips=0
-                    SumFlips=0
-                    for Index=1:L
-                       Flips = Flips +(1-2* Flips)* braA[Index]
-                       SumFlips += Flips* braB[Index]
-                    end
-                    phase=(-1)^SumFlips*phase0
-                    AmatrixStructure[j,i,k]=serial_num(basis, bra)* phase
-                end
-            end
-        end
-    end
-
     #find the spectrum of the reduced density matrix
     for q=0:L-1
         Amatrixq=zeros(Complex128, NumOfCyclesA, NumOfCyclesB)
@@ -115,11 +79,11 @@ function particle_entropy_Ts(basis::AbstractSzbasis, Asize::Int, d::Vector{Compl
                     phasefactor=(0.0+1.0im)*2*pi/minSize
                     qValue=(q-shiftmin)/div(L,minSize)
                     for k=1:minSize
-                        serialnum= AmatrixStructure[j,i,k]
-                        if serialnum != 0 
-                            phase= sign(serialnum)
-                            serialnum=abs(serialnum)
-                            element += factor1*phase*d[serialnum]*exp((1.0+0.0im)*(k-1)*(qValue +halfe)* phasefactor)
+                        InvCycles_Id = AmatrixStructure[j,i,k]
+                        if InvCycles_Id != 0 
+                            phase= sign(InvCycles_Id)
+                            InvCycles_Id =abs(InvCycles_Id)
+                            element += factor1*phase*d[InvCycles_Id]*exp((1.0+0.0im)*(k-1)*(qValue +halfe)* phasefactor)
                         end 
                     end
                 end
@@ -130,7 +94,6 @@ function particle_entropy_Ts(basis::AbstractSzbasis, Asize::Int, d::Vector{Compl
        S.=S.^2
        λ[q*NumOfCyclesA+1:q*NumOfCyclesA+NumOfCyclesA]=S[1:NumOfCyclesA]
     end
-
 
    # construct the spatial OBDM
    if measure_obdm && Asize == 1
@@ -171,3 +134,4 @@ function particle_entropy_Ts(basis::AbstractSzbasis, Asize::Int, d::Vector{Compl
         return SRen
     end
 end
+
