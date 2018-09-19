@@ -13,7 +13,10 @@ function Symmetry_Cycles_q0R1PH1(basis::AbstractSzbasis)
     end
     ll=length(basis)
     IdStatus = Bool
+    
+    #Num_cycles_max=round(Int64,basis.D/basis.K*1.5/4) #This is a rough upper bound on the number of cycles. It could me smaller.
     Num_cycles_max=round(Int64,basis.D/basis.K*1.5) #This is a rough upper bound on the number of cycles. It could me smaller.
+
     Cycles= zeros(Int64, Num_cycles_max, basis.K*4)
     CycleSize = zeros(Int64, Num_cycles_max)
     CReflection= zeros(Bool, Num_cycles_max)
