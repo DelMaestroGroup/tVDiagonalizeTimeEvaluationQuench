@@ -7,15 +7,50 @@ using ArgParse
 using JeszenszkiBasis
 
 # ------------------------------------------------------------------------------
-function getΨ0_trial(t::Float64, V0::Float64, boundary::BdryCond, basis::AbstractSzbasis, Rank::Int64, CycleSize::Vector{Int64})
-        Ψ0_trial = ones(Float64, Rank)/sqrt(Rank)
-       # Ψ0_trial.=Ψ0_trial.*sqrt.(CycleSize)
-        Ψ0_trial.=Ψ0_trial./sqrt(dot(Ψ0_trial,Ψ0_trial))
+function getΨ0_trial(t::Float64, V0::Float64, boundary::BdryCond, basis::AbstractSzbasis, Rank::Int64, CycleSize::Vector{Int64},InvCycles_Id::Vector{Int64})
 
-    Ψ0_trial
+
+    if -1.5 < V0/t < 1.5
+        Ψ0_trial = ones(Float64, Rank)
+      for j=1: HRank
+         Ψ[j]=Ψ[j]*sqrt(CycleSize[j])
+      end
+
+    else
+        Ψ0_trial = 0.01*ones(Float64, Rank)
+
+        if boundary==OBC
+            num_link = basis.K-1
+        elseif boundary==PBC
+            num_link = basis.K
+        end
+
+        for (i, bra) in enumerate(basis)
+            cc=0
+            for j=1:num_link
+                j_next = j % basis.K + 1
+                cc+=bra[j]*bra[j_next]
+            end
+
+            if (cc== basis.N-1) & (V0/t < -1.5)
+                Ψ0_trial[InvCycles_Id[serial_num(basis, bra)]]=1.0
+            elseif (cc==0) & (V0/t > 1.5)
+                Ψ0_trial[InvCycles_Id[serial_num(basis, bra)]]=1.0
+            end
+        end
+    end
+
+    for j=1: HRank
+       Ψ[j]=Ψ[j]*sqrt(CycleSize[j])
+    end
+
+    Ψ0_trial.=Ψ0_trial./sqrt(dot(Ψ0_trial,Ψ0_trial))
+
+    return Ψ0_trial
 end
 
 # ------------------------------------------------------------------------------
+
 s = ArgParseSettings()
 s.autofix_names = true
 @add_arg_table s begin
@@ -304,7 +339,7 @@ if ~c[:load_states]
    # http://docs.julialang.org/en/release-0.3/stdlib/linalg/?highlight=lanczos
    Ψ=zeros(Complex128, HRank)
    # I don't understand why this copying is necessary, it is a type conversion thing
-   Ψ = eigs(H, nev=1, which=:SR,tol=1e-13,v0=getΨ0_trial(c[:t],V0,boundary,basis, HRank, CycleSize))[2][1: HRank].*ones(Complex128, HRank)
+   Ψ = eigs(H, nev=1, which=:SR,tol=1e-13,v0=getΨ0_trial(c[:t],V0,boundary,basis, HRank, CycleSize, InvCycles_Id))[2][1: HRank].*ones(Complex128, HRank)
    #println("size(complex) = ", Base.summarysize(Ψ[1]))
    H=0
    Ψ.= Ψ./sqrt(dot(Ψ,Ψ))
