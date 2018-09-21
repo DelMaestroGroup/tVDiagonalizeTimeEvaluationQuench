@@ -1,7 +1,7 @@
 """
 Calculate the particle entanglement entropy for an eigenstate of the one-site-translation operator with eigenvalue q=0.
 """
-function particle_entropy_Ts(basis::AbstractSzbasis, Asize::Int, d::Vector{Complex128}, MaxOccupation::Int, measure_obdm::Bool, AmatrixStructure:: Array{Int64,3})
+function particle_entropy_Ts(basis::AbstractFermionsbasis, Asize::Int, d::Vector{Complex128}, measure_obdm::Bool, AmatrixStructure:: Array{Int64,3})
 
     SRen = zeros(Float64,3)
     DimA=Int64
@@ -35,8 +35,8 @@ function particle_entropy_Ts(basis::AbstractSzbasis, Asize::Int, d::Vector{Compl
     DimB = Int(round(facto))
 
     DimAdA= DimA
-    const basisA = RestrictedSzbasis(L, Asize, MaxOccupation)
-    const basisB = RestrictedSzbasis(L, Bsize, MaxOccupation)
+    const basisA = Fermionsbasis(L, Asize)
+    const basisB = Fermionsbasis(L, Bsize)
 
     CyclesA, CycleSizeA, NumOfCyclesA =Translational_Symmetry_Cycles(basisA)
 CyclesA=0
@@ -54,6 +54,7 @@ CyclesB=0
     Aparity= Asize%2
     Bparity= Bsize%2
     element= Complex128
+
     #find the spectrum of the reduced density matrix
     for q=0:L-1
         Amatrixq=zeros(Complex128, NumOfCyclesA, NumOfCyclesB)

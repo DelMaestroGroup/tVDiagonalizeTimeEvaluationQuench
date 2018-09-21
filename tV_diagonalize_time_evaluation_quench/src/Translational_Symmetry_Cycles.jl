@@ -1,7 +1,7 @@
 """
 Create a list of occupation basis for each translational symmetry cycle for fermionic 1D chains with PBC/APBC For odd/even N.
 """
-function Translational_Symmetry_Cycles(basis::AbstractSzbasis)
+function Translational_Symmetry_Cycles(basis::AbstractFermionsbasis)
 
     for x = [:NumOfCycles,:Num_cycles_max,:MemberID,:i_next]
        @eval $x = Int64

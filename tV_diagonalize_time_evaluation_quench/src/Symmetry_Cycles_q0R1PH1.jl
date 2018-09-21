@@ -1,7 +1,7 @@
 """
 Create a list of occupation basis for each translational, reflection and particle-hole symmetry cycle for fermionic 1D chains.
 """
-function Symmetry_Cycles_q0R1PH1(basis::AbstractSzbasis)
+function Symmetry_Cycles_q0R1PH1(basis::AbstractFermionsbasis)
 
     if basis.K!=2*basis.N
         warn("particle-hole symmetry works only at half-filling,", "  quit")

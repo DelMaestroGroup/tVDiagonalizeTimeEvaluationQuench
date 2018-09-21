@@ -1,7 +1,7 @@
 """
 Calculate the particle entanglement entropy for an eigenstate of the one-site-translation operator with eigenvalue q=0.
 """
-function PE_StructureMatrix(basis::AbstractSzbasis, Asize::Int, MaxOccupation::Int, InvCycles_Id::Vector{Int64})
+function PE_StructureMatrix(basis::AbstractFermionsbasis, Asize::Int, InvCycles_Id::Vector{Int64})
 
     for x = [:Flips,:SumFlips]
        @eval $x = Int64
@@ -15,8 +15,8 @@ function PE_StructureMatrix(basis::AbstractSzbasis, Asize::Int, MaxOccupation::I
     if Asize==0
        return zeros(Int64,1,1,1)
     end
-    const basisA = RestrictedSzbasis(L, Asize, MaxOccupation)
-    const basisB = RestrictedSzbasis(L, Bsize, MaxOccupation)
+    const basisA = Fermionsbasis(L, Asize)
+    const basisB = Fermionsbasis(L, Bsize)
 
     CyclesA, CycleSizeA, NumOfCyclesA =Translational_Symmetry_Cycles(basisA)
     CyclesB, CycleSizeB, NumOfCyclesB =Translational_Symmetry_Cycles(basisB)
@@ -31,7 +31,7 @@ function PE_StructureMatrix(basis::AbstractSzbasis, Asize::Int, MaxOccupation::I
     Aparity= Asize%2
     Bparity= Bsize%2
    # constructs the AmatrixStructure
-    OcupationOverlap =MaxOccupation+1
+    OcupationOverlap =2
     for i=1: NumOfCyclesB
         braB=basisB[CyclesB[i,1]] 
         for j=1: NumOfCyclesA 

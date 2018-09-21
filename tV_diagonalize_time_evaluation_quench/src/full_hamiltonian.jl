@@ -1,14 +1,14 @@
 """
 Number of links for the boundary conditions.
 """
-num_links(basis::AbstractSzbasis, boundary::BdryCond) = boundary == PBC ? basis.K : basis.K - 1
+num_links(basis::AbstractFermionsbasis, boundary::BdryCond) = boundary == PBC ? basis.K : basis.K - 1
 
 """
 Create the full Hamiltonian matrix for a PBC/OBC tV chain in 1D.
 
     H = -\\sum_{<i, j>} t_{i,j} (c_i^\\dagger c_j + c_i c_j^\\dagger) + (V) \\sum_i n_i n_{i + 1} - \\sum_i \\mu_i n_i
 """
-function full_hamiltonian(basis::AbstractSzbasis, Ts::AbstractVector{Float64}, mus::AbstractVector{Float64}, U::Float64; boundary::BdryCond=PBC)
+function full_hamiltonian(basis::AbstractFermionsbasis, Ts::AbstractVector{Float64}, mus::AbstractVector{Float64}, U::Float64; boundary::BdryCond=PBC)
     end_site = num_links(basis, boundary)
 
     length(Ts) == end_site || error("Incorrect number of Ts: $(length(Ts)) != $(end_site)")
@@ -53,14 +53,14 @@ function full_hamiltonian(basis::AbstractSzbasis, Ts::AbstractVector{Float64}, m
     H
 end
 
-function full_hamiltonian(basis::AbstractSzbasis, Ts::AbstractVector{Float64}, U::Float64; boundary::BdryCond=PBC)
+function full_hamiltonian(basis::AbstractFermionsbasis, Ts::AbstractVector{Float64}, U::Float64; boundary::BdryCond=PBC)
     full_hamiltonian(basis, Ts, zeros(basis.K), U, boundary=boundary)
 end
 
-function full_hamiltonian(basis::AbstractSzbasis, T::Float64, mus::AbstractVector{Float64}, U::Float64; boundary::BdryCond=PBC)
+function full_hamiltonian(basis::AbstractFermionsbasis, T::Float64, mus::AbstractVector{Float64}, U::Float64; boundary::BdryCond=PBC)
     full_hamiltonian(basis, fill(T, num_links(basis, boundary)), mus, U, boundary=boundary)
 end
 
-function full_hamiltonian(basis::AbstractSzbasis, T::Float64, U::Float64; boundary::BdryCond=PBC)
+function full_hamiltonian(basis::AbstractFermionsbasis, T::Float64, U::Float64; boundary::BdryCond=PBC)
     full_hamiltonian(basis, fill(T, num_links(basis, boundary)), U, boundary=boundary)
 end

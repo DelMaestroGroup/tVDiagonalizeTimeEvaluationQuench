@@ -1,7 +1,7 @@
 """
 Create the sparse translational, reflection and particle-hole symmetry block H_(q=0,R=1,P=1) of the hamiltonian of fermionic 1D chains with PBC/APBC.
 """
-function sparse_Block_Diagonal_Hamiltonian_q0R1PH1(basis::AbstractSzbasis, Cycles:: Array{Int64,2}, CycleSize:: Vector{Int64}, NumOfCycles::Int64, InvCycles_Id:: Vector{Int64}, InvCycles_order:: Vector{Int64}, t::Float64, V::Float64)
+function sparse_Block_Diagonal_Hamiltonian_q0R1PH1(basis::AbstractFermionsbasis, Cycles:: Array{Int64,2}, CycleSize:: Vector{Int64}, NumOfCycles::Int64, InvCycles_Id:: Vector{Int64}, InvCycles_order:: Vector{Int64}, t::Float64, V::Float64)
     if basis.K!=2*basis.N
         warn("particle-hole symmetry works only at half-filling,", "  quit")
         quit()
