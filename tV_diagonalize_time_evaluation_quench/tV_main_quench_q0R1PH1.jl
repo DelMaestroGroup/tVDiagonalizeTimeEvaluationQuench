@@ -63,10 +63,6 @@ s.autofix_names = true
     "--out"
         metavar = "FILE"
         help = "path to output file"
-    "--site-max"
-        metavar = "N"
-        help = "site occupation restriction"
-        arg_type = Int
     "--obdm"
         help = "output the spatial dependence of the OBDM"
         action = :store_true
@@ -182,8 +178,6 @@ if c[:save_states] && c[:load_states]
     exit(1)
 end
 
-# Site occupation restriction
-const site_max = c[:site_max]
 # Boundary conditions
 const boundary = c[:boundary]
 # Size of region A
@@ -285,20 +279,12 @@ obdm=zeros(Float64,M,length(time_range))
 # open and prepare files for output
 if ~c[:save_states]
 f_part = open(output, "w")
-   if site_max === nothing
-       write(f_part, "# M=$(M), N=$(N),V0=$(V0), V=$(V), $(boundary)\n")
-   else
-       write(f_part, "# M=$(M), N=$(N), max=$(site_max), V0=$(V0), V=$(V), $(boundary)\n")
-   end 
+   write(f_part, "# M=$(M), N=$(N),V0=$(V0), V=$(V), $(boundary)\n")
    write(f_part,@sprintf "#%11s%24s%24s\n" "time (tJ)" "S₁(n=$(Asize))" "S₂(n=$(Asize))")
    if c[:spatial]
        ℓsize = div(M, 2)
        f_spat = open(spat_output, "w")
-       if site_max === nothing
-           write(f_spat, "# M=$(M), N=$(N),V0=$(V0), V=$(V), $(boundary)\n")
-       else
-           write(f_spat, "# M=$(M), N=$(N), max=$(site_max), V0=$(V0), V=$(V), $(boundary)\n")
-       end
+       write(f_spat, "# M=$(M), N=$(N),V0=$(V0), V=$(V), $(boundary)\n")
        write(f_spat,@sprintf "#%11s%24s%24s\n" "time (tJ)" "S₁(ℓ=$(ℓsize))" "S₂(ℓ=$(ℓsize))")
    end
 end
