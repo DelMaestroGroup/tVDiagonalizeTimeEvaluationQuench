@@ -1,13 +1,11 @@
 # Renyi entanglement entropy of the t-V Model at half-filling after a quantum quench
-
 push!(LOAD_PATH, joinpath(dirname(@__FILE__), "src"))
 
 using tVDiagonalize
 using ArgParse
-using JeszenszkiBasis
-
+using Fermionicbasis
 # ------------------------------------------------------------------------------
-function getΨ0_trial(t::Float64, V0::Float64, boundary::BdryCond, basis::AbstractSzbasis, Rank::Int64, CycleSize::Vector{Int64},InvCycles_Id::Vector{Int64})
+function getΨ0_trial(t::Float64, V0::Float64, boundary::BdryCond, basis::AbstractFermionsbasis, Rank::Int64, CycleSize::Vector{Int64},InvCycles_Id::Vector{Int64})
 
 
     if -1.5 < V0/t < 1.5
@@ -267,13 +265,8 @@ if c[:save_states] | c[:load_states]
         Ψt_output=c[:states_file]
     end
 end
+const basis = Fermionsbasis(M, N)
 
-# are we restricting the number of particles per site?
-if site_max === nothing
-    const basis = Szbasis(M, N)
-else
-    const basis = RestrictedSzbasis(M, N, site_max)
-end
 q0 = c[:Allqs] ? 1 : 0
 p1 = c[:Allps] ? 1 : -1
 
@@ -323,12 +316,13 @@ end
 
 # Exploit symmetries of the hamiltonian to perform a bloack diagonalization
 Cycles, CycleSize, NumOfCycles, InvCycles_Id, InvCycles_order =Symmetry_Cycles_q0R1PH1(basis)
-      #println("size(Cycles) = ",Base.summarysize(Cycles))
+      #println("size(Cycles) = ",Base.summarysize(Cycles)/1024^3," gb")
+
 if ~c[:load_states]  
    #---------------------------------------find the states---------------------------------------
    # Create the Hamiltonian 
    H, HRank = sparse_Block_Diagonal_Hamiltonian_q0R1PH1(basis, Cycles, CycleSize, NumOfCycles, InvCycles_Id, InvCycles_order, c[:t],V0) 
-   #println("size(H) = ",Base.summarysize(H))
+   #println("size(H) = ",Base.summarysize(H)/1024^3," gb")
    print(" sparse_hamiltonian finish\n ")
 
    # H0 = full_hamiltonian(basis, c[:t], V0,boundary=boundary)
@@ -343,7 +337,6 @@ if ~c[:load_states]
    #println("size(complex) = ", Base.summarysize(Ψ[1]))
    H=0
    Ψ.= Ψ./sqrt(dot(Ψ,Ψ))
-
    EigenEnergie=Complex128
    #  wave function in terms of the spatial basis at time t
    Ψt=zeros(Complex128, NumOfCycles, time_num)
@@ -353,9 +346,9 @@ if ~c[:load_states]
       for P=1:-2:-1*p1 
          #Create the Hamiltonian
 
-         Hq,HqRank = Block_Diagonal_Hamiltonian_q0R1PH1(basis, Cycles, CycleSize, NumOfCycles, InvCycles_Id, InvCycles_order, c[:t],V)      
+         Hq,HqRank = Block_Diagonal_Hamiltonian_q0R1PH1(basis, Cycles, CycleSize, NumOfCycles, InvCycles_Id, InvCycles_order, c[:t],V) 
          EigenEnergies_q,VV = eig(Symmetric(Hq))
-         #println("size(Hq) = ",Base.summarysize(Hq))
+         #println("size(Hq) = ",Base.summarysize(Hq)/1024^3," gb")
          Hq=0
          for i_HqRank =1: HqRank
             EigenEnergie= EigenEnergies_q[i_HqRank]
@@ -369,6 +362,7 @@ if ~c[:load_states]
    InvCycles_order=0
       end
    end   
+
    print(" Block_Diagonal_Hamiltonian finished\n ")
 else  
    #---------------------------------------load the states---------------------------------------
@@ -417,7 +411,7 @@ else
 end
 if ~c[:save_states] 
    #---------------------------------------calculate the entanglement---------------------------------------
-   const AmatrixStructure =PE_StructureMatrix(basis, Asize, site_max, InvCycles_Id)
+   const AmatrixStructure =PE_StructureMatrix(basis, Asize, InvCycles_Id)
 
    # Calculate the entropy if we start from t = 0
 
@@ -428,10 +422,10 @@ if ~c[:save_states]
       end
 
        if c[:obdm] && Asize == 1
-           s_particle,obdm[:,1] = particle_entropy_Ts(basis, Asize, Ψ, site_max,c[:obdm], AmatrixStructure)
+           s_particle,obdm[:,1] = particle_entropy_Ts(basis, Asize, Ψ,c[:obdm], AmatrixStructure)
 
        else
-           s_particle = particle_entropy_Ts(basis, Asize, Ψ, site_max,c[:obdm], AmatrixStructure)
+           s_particle = particle_entropy_Ts(basis, Asize, Ψ,c[:obdm], AmatrixStructure)
 
        end
 
@@ -466,10 +460,10 @@ if ~c[:save_states]
       end
 
       if c[:obdm] && Asize == 1
-         s_particle,obdm[:,it] = particle_entropy_Ts(basis, Asize, Ψ, site_max,c[:obdm], AmatrixStructure)
+         s_particle,obdm[:,it] = particle_entropy_Ts(basis, Asize, Ψ,c[:obdm], AmatrixStructure)
 
       else
-         s_particle = particle_entropy_Ts(basis, Asize, Ψ, site_max,c[:obdm], AmatrixStructure)
+         s_particle = particle_entropy_Ts(basis, Asize, Ψ,c[:obdm], AmatrixStructure)
 
       end
 
@@ -508,6 +502,7 @@ if ~c[:save_states]
    end
 else 
    #---------------------------------------save the states---------------------------------------
+
    file_header= FileHeader(M, N, time_num, NumOfCycles, V0, V, c[:time_min], c[:time_max])
    Ψtf=open(Ψt_output, "w")
       write(Ψtf, file_header.M, file_header.N, file_header.time_num, file_header.basis_num, file_header.V0, file_header.V, file_header.time_min, file_header.time_max,Ψt)
