@@ -23,11 +23,10 @@ function sparse_hamiltonian(basis::AbstractFermionsbasis, Ts::AbstractVector{Flo
         Usum = 0
         musum = 0
         for j=1:end_site
-            musum += mus[j] * bra[j]
+            musum += mus[j] * CheckSite(bra,j)
             j_next = j % basis.K + 1
-            Usum += bra[j] * (bra[j_next])
+            Usum += CheckSite(bra,j) * CheckSite(bra,j_next)
         end
-
         push!(rows, i)
         push!(cols, i)
         #push!(elements, U * Usum - musum-(basis.N-1)*U/2)
@@ -38,18 +37,18 @@ function sparse_hamiltonian(basis::AbstractFermionsbasis, Ts::AbstractVector{Flo
             j_next = j % basis.K + 1
             # Tunnel right, tunnel left.
             for (site1, site2) in [(j, j_next), (j_next, j)]
-                if bra[site1] > 0
+                 if CheckSite(bra,site1) == 1
                     ket = copy(bra)
-                    ket[site1] -= 1
-                    ket[site2] += 1
-                    if ket in basis
+                    if CheckSite(bra,site2) == 0
+                        ket =EmptySite(ket,site1)
+                        ket =OccupySite(ket,site2)
                         factor = 1
                         if j_next == 1
                             factor = (1)^(basis.N-1)
                         end
                         push!(rows, i)
                         push!(cols, serial_num(basis, ket))
-                        push!(elements, -Ts[j] * sqrt(bra[site1]) * sqrt(bra[site2]+1) * factor)
+                        push!(elements, -Ts[j] * factor)
                     end
                 end
             end

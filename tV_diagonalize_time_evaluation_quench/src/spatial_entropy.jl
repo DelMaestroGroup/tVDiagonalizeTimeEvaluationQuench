@@ -5,7 +5,7 @@ introduced by Wiseman and Vaccaro in 2003.
 """
 function spatial_entropy(basis::AbstractFermionsbasis, A, d::Vector{Complex128},InvCycles_Id::Vector{Int64})
     B = setdiff(1:basis.K, A)
-
+    A = convert(Array{Int,1},A)
     # Matrices to SVD
     Amatrices = []
     for i=0:basis.N
@@ -17,15 +17,17 @@ function spatial_entropy(basis::AbstractFermionsbasis, A, d::Vector{Complex128},
 
 #    norms = zeros(Float64, basis.N+1)
 
-    for (i, bra) in enumerate(basis)
-        braA = view(bra, A)
-        braB = view(bra, B)
+    for i=1: basis.D
+        braA = SubKet(basis.vectors[i], A)
+        braB = SubKet(basis.vectors[i], B)
 
-        row = serial_num(basis, length(A), sum(braA), braA)
-        col = serial_num(basis, length(B), sum(braB), braB)
+        row = serial_num(basis, length(A), count_ones(braA), braA)
+        col = serial_num(basis, length(B), count_ones(braB), braB)
 
-        Amatrices[1 + sum(braA)][row, col] = d[InvCycles_Id[i]]
-#        norms[1 + sum(braA)] += abs(d[i])^2
+        Amatrices[1 + count_ones(braA)][row, col] = d[InvCycles_Id[i]]
+
+#        norms[1 + count_ones(braA)] += abs(d[i])^2
+
     end
 
 #    norm_err = abs(sum(norms) - 1.0)
@@ -47,7 +49,7 @@ function spatial_entropy(basis::AbstractFermionsbasis, A, d::Vector{Complex128},
     for k=1:length(S_sp)
         if abs(S_sp[k])>0
             S1_sp -= abs(S_sp[k])^2*log(abs(S_sp[k])^2)
-	       end
+	end
     end
     S2_sp = -log(abs(sum(S_sp.^4)))
 

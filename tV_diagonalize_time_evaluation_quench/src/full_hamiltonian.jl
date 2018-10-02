@@ -21,28 +21,29 @@ function full_hamiltonian(basis::AbstractFermionsbasis, Ts::AbstractVector{Float
         Usum = 0
         musum = 0
         for j=1:end_site
-            musum += mus[j] * bra[j]
+            musum += mus[j] * CheckSite(bra,j)
             j_next = j % basis.K + 1
-            Usum += bra[j] * (bra[j_next])
+            Usum += CheckSite(bra,j) * CheckSite(bra,j_next)
         end
         H[i,i]= U * Usum - musum
+
         # Off-diagonal part
         for j=1:end_site
             j_next = j % basis.K + 1
             # Tunnel right, tunnel left.
             for (site1, site2) in [(j, j_next), (j_next, j)]
-                if bra[site1] > 0
+                 if CheckSite(bra,site1) == 1
                     ket = copy(bra)
-                    ket[site1] -= 1
-                    ket[site2] += 1
-                    if ket in basis
+                    if CheckSite(bra,site2) == 0
+                        ket =EmptySite(ket,site1)
+                        ket =OccupySite(ket,site2)
                         factor = 1
                         if j_next == 1
                             factor = (1)^(basis.N-1)
                         end
                         if serial_num(basis, ket)<i
-                            H[serial_num(basis, ket),i]=-Ts[j] * sqrt(bra[site1]) * sqrt(bra[site2]+1) * factor
-                            H[i,serial_num(basis, ket)]=conj(-Ts[j] * sqrt(bra[site1]) * sqrt(bra[site2]+1) * factor)
+                            H[serial_num(basis, ket),i]=-Ts[j] * factor
+                            H[i,serial_num(basis, ket)]=conj(-Ts[j] * factor)
                         end
                     end
                 end

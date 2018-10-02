@@ -2,7 +2,6 @@
 Calculate the particle entanglement entropy for an eigenstate of the one-site-translation operator with eigenvalue q=0.
 """
 function PE_StructureMatrix(basis::AbstractFermionsbasis, Asize::Int, InvCycles_Id::Vector{Int64})
-
     for x = [:Flips,:SumFlips]
        @eval $x = Int64
     end
@@ -23,9 +22,9 @@ function PE_StructureMatrix(basis::AbstractFermionsbasis, Asize::Int, InvCycles_
     AmatrixStructure=zeros(Int64,NumOfCyclesA, NumOfCyclesB,L)
 
 
-    braA = Array{Int}(L)
-    braB = Array{Int}(L)
-    bra = Array{Int}(L)
+    braA = Int
+    braB = Int
+    bra  = Int
 
 
     Aparity= Asize%2
@@ -33,7 +32,8 @@ function PE_StructureMatrix(basis::AbstractFermionsbasis, Asize::Int, InvCycles_
    # constructs the AmatrixStructure
     OcupationOverlap =2
     for i=1: NumOfCyclesB
-        braB=basisB[CyclesB[i,1]] 
+        braB=basisB.vectors[CyclesB[i,1]]
+ 
         for j=1: NumOfCyclesA 
             minSize=CycleSizeA[j]
             maxSize=CycleSizeB[i]
@@ -42,19 +42,19 @@ function PE_StructureMatrix(basis::AbstractFermionsbasis, Asize::Int, InvCycles_
             end
             phase0=1
             for k=1: minSize             
-                braA= basisA[CyclesA[j,k]]
-                bra=braA+braB
+                braA= basisA.vectors[CyclesA[j,k]]
+                 bra=braA+braB
                     # absorbing phase changes due to a particle crossing the system boundary.
                     if Bparity==1 && j>1
-                        phase0*= 1-2*braA[1]
+                        phase0*= 1-2*CheckSite(braA,1)
+
                     end
-                Overlap =findfirst(bra, OcupationOverlap)
-                if Overlap < 1 #(Overlap==0)
+                 if braA & braB==0
                     Flips=0
                     SumFlips=0
                     for Index=1:L
-                       Flips = Flips +(1-2* Flips)* braA[Index]
-                       SumFlips += Flips* braB[Index]
+                       Flips = Flips +(1-2* Flips)* CheckSite(braA, Index)
+                       SumFlips += Flips* CheckSite(braB,Index)
                     end
                     phase=(-1)^SumFlips*phase0
                     AmatrixStructure[j,i,k]= InvCycles_Id[serial_num(basis, bra)]* phase
@@ -62,7 +62,6 @@ function PE_StructureMatrix(basis::AbstractFermionsbasis, Asize::Int, InvCycles_
             end
         end
     end
-
     return AmatrixStructure
 
 end

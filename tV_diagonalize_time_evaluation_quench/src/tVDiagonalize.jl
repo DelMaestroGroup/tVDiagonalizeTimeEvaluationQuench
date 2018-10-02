@@ -1,6 +1,6 @@
  module tVDiagonalize
 
-using Fermionicbasis
+using IntFermionicbasis
 
 export
     BdryCond,

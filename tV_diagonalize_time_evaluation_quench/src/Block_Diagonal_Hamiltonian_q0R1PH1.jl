@@ -14,10 +14,10 @@ function Block_Diagonal_Hamiltonian_q0R1PH1(basis::AbstractFermionsbasis, Cycles
     for CycleId =1: NumOfCycles
         # Diagonal part
         Vsum = 0.0
-        bra=basis[Cycles[CycleId,1]]
+        bra=basis.vectors[Cycles[CycleId,1]]
         for j=1:end_site
             j_next = j % basis.K + 1
-            Vsum += bra[j] * (bra[j_next])
+            Vsum += CheckSite(bra,j) * CheckSite(bra,j_next)
         end
         H011[CycleId, CycleId]= Vsum*V
         # Off-diagonal part
@@ -27,11 +27,11 @@ function Block_Diagonal_Hamiltonian_q0R1PH1(basis::AbstractFermionsbasis, Cycles
              j_next = j % basis.K + 1
              # Tunnel right, tunnel left.
              for (site1, site2) in [(j, j_next), (j_next, j)]
-                 if bra[site1] > 0
+                 if CheckSite(bra,site1) == 1
                      ket = copy(bra)
-                     ket[site1] -= 1
-                     ket[site2] += 1
-                     if dot(ket,ket)==N 
+                      if CheckSite(bra,site2) == 0
+                         ket =EmptySite(ket,site1)
+                         ket =OccupySite(ket,site2)
                          kId=serial_num(basis, ket)
                          CycleId1 = InvCycles_Id[kId]
                          kIdcy = InvCycles_order[kId]

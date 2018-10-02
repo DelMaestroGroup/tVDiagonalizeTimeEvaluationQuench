@@ -22,11 +22,12 @@ function Symmetry_Cycles_q0R1PH1(basis::AbstractFermionsbasis)
     CReflection= zeros(Bool, Num_cycles_max)
     InvCycles_Id = zeros(Int64, ll)
     InvCycles_order = zeros(Int64, ll)
-
+    const L=basis.K
     Status  = trues(basis.D)
     NumOfCycles=0
     MemberID=0
-    for (i, bra) in enumerate(basis)
+    for i=1: basis.D
+
         i_next=i
         j=4
         while j >0
@@ -42,7 +43,7 @@ function Symmetry_Cycles_q0R1PH1(basis::AbstractFermionsbasis)
                     Cycles[NumOfCycles, MemberID]= i_next
                     InvCycles_Id[i_next]= NumOfCycles
                     InvCycles_order[i_next]= MemberID
-                    i_next=serial_num(basis, circshift(basis[i_next],1))
+                    i_next=serial_num(basis, CircshiftKet(basis.vectors[i_next],L))
                     IdStatus = Status[i_next]
                 end
             else
@@ -50,9 +51,9 @@ function Symmetry_Cycles_q0R1PH1(basis::AbstractFermionsbasis)
             end
             j-=1
             if j==3
-                i_next=serial_num(basis,reverse(bra))
+                i_next=serial_num(basis,ReverseKet(basis.vectors[i],L))
                 if ~Status[i_next]
-                    i_next=serial_num(basis,1 .-bra) 
+                    i_next=serial_num(basis,FlipKet(basis.vectors[i],L)) 
                     if ~Status[i_next]
                         j=0
                     else
@@ -61,14 +62,14 @@ function Symmetry_Cycles_q0R1PH1(basis::AbstractFermionsbasis)
                 end                
             end
             if j==2
-                i_next=serial_num(basis,1 .-bra) 
+                i_next=serial_num(basis,FlipKet(basis.vectors[i],L)) 
                 if ~Status[i_next]
                     j=0
                 else
                     j=2
                 end                
             elseif j==1
-                i_next=serial_num(basis,reverse(1 .-bra))
+                i_next=serial_num(basis, ReverseKet(FlipKet(basis.vectors[i],L),L))
             end
             if j==0
                 CycleSize[NumOfCycles]= MemberID

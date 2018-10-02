@@ -23,7 +23,7 @@ function Translational_Symmetry_Cycles(basis::AbstractFermionsbasis)
                 Status[i_next]=false
                 MemberID+=1
                 Cycles[NumOfCycles, MemberID]= i_next
-                i_next=serial_num(basis, circshift(basis[i_next],1))
+                i_next=serial_num(basis, CircshiftKet(basis.vectors[i_next], basis.K))
                 IdStatus = Status[i_next]
             end
             CycleSize[NumOfCycles]= MemberID
