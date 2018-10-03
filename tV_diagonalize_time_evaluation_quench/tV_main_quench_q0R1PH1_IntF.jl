@@ -442,7 +442,7 @@ if ~c[:save_states]
    # output the time dependent OBDM to disk
    if c[:obdm] && Asize == 1
        obdm_name = @sprintf "obdm_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%06.3f_%06.3f.dat" M N V0 V Δt time_range[1] time_range[end]
-       open(obdm_name, "w") do obdm_f
+         obdm_f = open(obdm_name, "w")
            write(obdm_f, @sprintf "#%11s" "|i-j|")
            for time in time_range
               write(obdm_f, @sprintf "%16.6f" time)
@@ -458,7 +458,6 @@ if ~c[:save_states]
                write(obdm_f, "\n")
                flush(obdm_f)
            end
-        end
         close(obdm_f)
    end
 else 
