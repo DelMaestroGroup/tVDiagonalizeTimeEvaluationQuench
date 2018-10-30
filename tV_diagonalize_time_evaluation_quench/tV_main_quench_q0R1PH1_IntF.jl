@@ -200,11 +200,17 @@ if c[:time_step] === nothing
     if c[:time_num] === nothing
         time_range = c[:time_min]:0.5:c[:time_max]
         time_num=length(time_range) 
+        Δt = 0.5
     else
         if c[:time_log]
             time_range = logspace(c[:time_min], c[:time_max], c[:time_num])
         else
             time_range = linspace(c[:time_min], c[:time_max], c[:time_num])
+            if length(time_range) > 1
+                Δt = time_range[2]-time_range[1]
+            else
+                Δt = time_range[1]
+            end
         end
         time_num=c[:time_num]
     end
@@ -212,16 +218,11 @@ else
     if c[:time_num] === nothing
         time_range = c[:time_min]:c[:time_step]:c[:time_max]
         time_num=length(time_range) 
+        Δt = c[:time_step]
     else
         println("--time-step and --time-num may not both be supplied")
         exit(1)
     end
-end
-
-if length(time_range) > 1
-    Δt = time_range[2]-time_range[1]
-else
-    Δt = time_range[1]
 end
 
 # Output file
@@ -324,8 +325,6 @@ if ~c[:load_states]
    H=0
    Ψ.= Ψ./sqrt(dot(Ψ,Ψ))
 
-
-
    if abs(time_range[1])> 1.0E-12 || length(time_range) >1
       EigenEnergie=Complex128
       #  wave function in terms of the Symmetry basis at time t
@@ -374,13 +373,16 @@ else
       time_min_f=file_header2[3]
       time_max_f=file_header2[4]
       time_range_f = linspace(time_min_f, time_max_f, time_num_f)
+      println(length(time_range_f))
       if length(time_range_f) > 1
           Δt_f = time_range_f[2]-time_range_f[1]
       else
           Δt_f = time_range_f[1]
       end
+      println(Δt_f)
       if (M_f!=M) || (N_f!=N) || (abs(Δt_f-Δt)> 1.0E-12)||(abs(V0_f- V0)> 1.0E-12) ||(abs(V_f- V)> 1.0E-12) ||((time_range_f[1]- time_range[1])> 1.0E-12) ||(time_range_f[end]- time_range[end]< -1.0E-12)
          println("the file of states is not compatible with the input parameters" )
+         println("M=",M," N=",N," V0=",V0," V=",V," Δt=",Δt," time_max=", time_range[end]," time_min=",time_min)
          println("M_f=",M_f," N_f=",N_f," V0_f=",V0_f," V_f=",V_f," Δt_f=",Δt_f," time_max_f=", time_max_f," time_min_f=",time_min_f)
          exit(1)
       end
