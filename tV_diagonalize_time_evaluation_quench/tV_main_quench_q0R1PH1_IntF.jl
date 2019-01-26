@@ -48,6 +48,27 @@ function getΨ0_trial(t::Float64, V0::Float64, boundary::BdryCond, basis::Abstra
 end
 
 # ------------------------------------------------------------------------------
+function pair_correlation(basis::AbstractFermionsbasis, d::Vector{Complex128}, InvCycles_Id::Vector{Int64})
+""" We exploit translational symmetry to speed things up. """
+
+    # setup the needed vectors
+    g2 = zeros(Float64, basis.K)
+
+    # measure the pair correlation function (density-density) exploiting
+    # translational symmetry
+    for i=1:basis.K
+        for b=1:basis.D
+            config = basis.vectors[b]
+            weight = d[InvCycles_Id[b]]
+            n0 = CheckSite(config,1)
+            ni = CheckSite(config,i)
+            g2[i] += n0*ni*abs(weight)^2
+        end
+    end
+
+    return g2
+end
+# ------------------------------------------------------------------------------
 
 s = ArgParseSettings()
 s.autofix_names = true
@@ -65,6 +86,9 @@ s.autofix_names = true
         help = "path to output file"
     "--obdm"
         help = "output the spatial dependence of the OBDM"
+        action = :store_true
+    "--g2"
+        help = "output the pair correlation function ⟨ρ_iρ_0⟩"
         action = :store_true
     "--spatial"
         help = "output the spatial entanglement entropy for ℓ = M/2"
@@ -237,6 +261,11 @@ if c[:spatial]
      spat_output = @sprintf "spatEE_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%06.3f_%06.3f_%1d.dat" M N V0 V Δt time_range[1] time_range[end] Asize
 end
 
+# output file if we are measuring the pair correlation function 
+if c[:g2]
+     g2_output = @sprintf "g2_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%06.3f_%06.3f.dat" M N V0 V Δt time_range[1] time_range[end]
+end
+
 # state output file
 if c[:save_states] || c[:load_states]
     if c[:states_file] === nothing
@@ -279,26 +308,36 @@ obdm=zeros(Float64,M,length(time_range))
 
 # open and prepare files for output
 if ~c[:save_states]
-f_part = open(output, "w")
-   write(f_part, "# M=$(M), N=$(N), V0=$(V0), V=$(V), $(boundary)\n")
-   write(f_part,@sprintf "#%11s%24s%24s\n" "time (tJ)" "S₁(n=$(Asize))" "S₂(n=$(Asize))")
-   if c[:spatial]
-       ℓsize = div(M, 2)
-       f_spat = open(spat_output, "w")
-       write(f_spat, "# M=$(M), N=$(N), V0=$(V0), V=$(V), $(boundary)\n")
-       write(f_spat,@sprintf "#%11s%24s%24s\n" "time (tJ)" "S₁(ℓ=$(ℓsize))" "S₂(ℓ=$(ℓsize))")
-   end
+    f_part = open(output, "w")
+    write(f_part, "# M=$(M), N=$(N), V0=$(V0), V=$(V), $(boundary)\n")
+    write(f_part,@sprintf "#%11s%24s%24s\n" "time (tJ)" "S₁(n=$(Asize))" "S₂(n=$(Asize))")
+    if c[:spatial]
+        ℓsize = div(M, 2)
+        f_spat = open(spat_output, "w")
+        write(f_spat, "# M=$(M), N=$(N), V0=$(V0), V=$(V), $(boundary)\n")
+        write(f_spat,@sprintf "#%11s%24s%24s\n" "time (tJ)" "S₁(ℓ=$(ℓsize))" "S₂(ℓ=$(ℓsize))")
+    end
+    if c[:g2]
+        f_g2 = open(g2_output, "w")
+        write(f_g2, "# M=$(M), N=$(N), V0=$(V0), V=$(V), $(boundary)\n")
+        write(f_g2,@sprintf "#%11s" "time (tJ)")
+        for x=0:M-1
+            write(f_g2,@sprintf "%24d" x )
+        end
+        write(f_g2,"\n")
+    end
+
 end
 #_______________________________________________________________________________
 struct FileHeader
-       M::Int64
-       N::Int64
-       time_num:: Int64
-       basis_num:: Int64
-       V0::Float64
-       V::Float64
-       time_min::Float64
-       time_max::Float64
+    M::Int64
+    N::Int64
+    time_num:: Int64
+    basis_num:: Int64
+    V0::Float64
+    V::Float64
+    time_min::Float64
+    time_max::Float64
 end
 
 # Exploit symmetries of the hamiltonian to perform a bloack diagonalization
@@ -320,6 +359,10 @@ if ~c[:load_states]
    # http://docs.julialang.org/en/release-0.3/stdlib/linalg/?highlight=lanczos
    Ψ=zeros(Complex128, HRank)
    # I don't understand why this copying is necessary, it is a type conversion thing
+   #
+   evals = eigs(H, nev=1, which=:SR,tol=1e-13,v0=getΨ0_trial(c[:t],V0,boundary,basis, HRank, CycleSize, InvCycles_Id))[1]
+   println(evals)
+
    Ψ = eigs(H, nev=1, which=:SR,tol=1e-13,v0=getΨ0_trial(c[:t],V0,boundary,basis, HRank, CycleSize, InvCycles_Id))[2][1: HRank].*ones(Complex128, HRank)
    #println("size(complex) = ", Base.summarysize(Ψ[1]))
    H=0
@@ -422,6 +465,17 @@ if ~c[:save_states]
           flush(f_spat)
       end
 
+      # measure the pair correlation function
+      if c[:g2]
+          g2 = pair_correlation(basis,Ψ, InvCycles_Id)
+          write(f_g2, @sprintf "%12.6f" time)
+          for x=1:M
+              write(f_g2, @sprintf "%24.12E" g2[x])
+          end
+          write(f_g2,"\n")
+          flush(f_g2)
+      end
+
       if c[:obdm] && Asize == 1
          s_particle,obdm[:,it] = particle_entropy_Ts(basis, Asize, Ψ,c[:obdm], AmatrixStructure)
 
@@ -438,6 +492,11 @@ if ~c[:save_states]
 
    if c[:spatial]
        close(f_spat)
+   end
+
+   # close the pair correlation function file
+   if c[:g2]
+       close(f_g2)
    end
 
 #_______________________________________________________________________________
