@@ -263,7 +263,7 @@ end
 
 # output file if we are measuring the pair correlation function 
 if c[:g2]
-     g2_output = @sprintf "g2_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%06.3f_%06.3f.dat" M N V0 V Δt time_range[1] time_range[end]
+     g2_output = @sprintf "g2_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%06.3f_%06.3f_%1d.dat" M N V0 V Δt time_range[1] time_range[end] Asize
 end
 
 # state output file
