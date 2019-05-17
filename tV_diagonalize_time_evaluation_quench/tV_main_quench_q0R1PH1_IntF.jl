@@ -8,7 +8,7 @@ using IntFermionicbasis
 function getΨ0_trial(t::Float64, V0::Float64, boundary::BdryCond, basis::AbstractFermionsbasis, Rank::Int64, CycleSize::Vector{Int64},InvCycles_Id::Vector{Int64})
 
 
-    if -1.5 < V0/t < 1.5
+    if -1.95 < V0/t < 1.95
         Ψ0_trial = ones(Float64, Rank)
       for j=1: HRank
          Ψ[j]=Ψ[j]*sqrt(CycleSize[j])
@@ -30,9 +30,9 @@ function getΨ0_trial(t::Float64, V0::Float64, boundary::BdryCond, basis::Abstra
                 cc+=bra[j]*bra[j_next]
             end
 
-            if (cc== basis.N-1) && (V0/t < -1.5)
+            if (cc== basis.N-1) && (V0/t < -1.95)
                 Ψ0_trial[InvCycles_Id[serial_num(basis, bra)]]=1.0
-            elseif (cc==0) && (V0/t > 1.5)
+            elseif (cc==0) && (V0/t > 1.95)
                 Ψ0_trial[InvCycles_Id[serial_num(basis, bra)]]=1.0
             end
         end
