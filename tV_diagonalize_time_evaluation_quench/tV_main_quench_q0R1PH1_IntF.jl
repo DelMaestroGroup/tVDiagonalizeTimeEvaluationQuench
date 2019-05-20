@@ -1,4 +1,5 @@
-# Renyi entanglement entropy of the t-V Model at half-filling after a quantum quench
+# Renyi entanglement entropy of the t-V Model at half-filling after a quantum quench 
+
 push!(LOAD_PATH, joinpath(dirname(@__FILE__), "src"))
 
 using tVDiagonalize
@@ -10,9 +11,6 @@ function getΨ0_trial(t::Float64, V0::Float64, boundary::BdryCond, basis::Abstra
 
     if -1.95 < V0/t < 1.95
         Ψ0_trial = ones(Float64, Rank)
-      for j=1: HRank
-         Ψ[j]=Ψ[j]*sqrt(CycleSize[j])
-      end
 
     else
         Ψ0_trial = 0.01*ones(Float64, Rank)
@@ -25,9 +23,8 @@ function getΨ0_trial(t::Float64, V0::Float64, boundary::BdryCond, basis::Abstra
 
         for (i, bra) in enumerate(basis)
             cc=0
-            for j=1:num_link
-                j_next = j % basis.K + 1
-                cc+=bra[j]*bra[j_next]
+            for j=1:num_link j_next = j % basis.K + 1
+		cc+=CheckSite(bra,j)*CheckSite(bra,j_next)
             end
 
             if (cc== basis.N-1) && (V0/t < -1.95)
@@ -38,9 +35,6 @@ function getΨ0_trial(t::Float64, V0::Float64, boundary::BdryCond, basis::Abstra
         end
     end
 
-    for j=1: HRank
-       Ψ[j]=Ψ[j]*sqrt(CycleSize[j])
-    end
 
     Ψ0_trial.=Ψ0_trial./sqrt(dot(Ψ0_trial,Ψ0_trial))
 
@@ -362,6 +356,7 @@ if ~c[:load_states]
    #
    evals = eigs(H, nev=1, which=:SR,tol=1e-13,v0=getΨ0_trial(c[:t],V0,boundary,basis, HRank, CycleSize, InvCycles_Id))[1]
    println(evals)
+   exit(0)
 
    Ψ = eigs(H, nev=1, which=:SR,tol=1e-13,v0=getΨ0_trial(c[:t],V0,boundary,basis, HRank, CycleSize, InvCycles_Id))[2][1: HRank].*ones(Complex128, HRank)
    #println("size(complex) = ", Base.summarysize(Ψ[1]))
