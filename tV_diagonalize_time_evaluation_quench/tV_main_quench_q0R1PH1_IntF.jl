@@ -21,20 +21,24 @@ function getΨ0_trial(t::Float64, V0::Float64, boundary::BdryCond, basis::Abstra
             num_link = basis.K
         end
 
-        for (i, bra) in enumerate(basis)
+        for i=1: HRank
+            bra=basis.vectors[Cycles[i,1]]
             cc=0
             for j=1:num_link j_next = j % basis.K + 1
 		cc+=CheckSite(bra,j)*CheckSite(bra,j_next)
             end
 
             if (cc== basis.N-1) && (V0/t < -1.95)
-                Ψ0_trial[InvCycles_Id[serial_num(basis, bra)]]=1.0
+                Ψ0_trial[i]=1.0
             elseif (cc==0) && (V0/t > 1.95)
-                Ψ0_trial[InvCycles_Id[serial_num(basis, bra)]]=1.0
+                Ψ0_trial[i]=1.0
             end
         end
     end
 
+    for j=1: HRank
+       Ψ0_trial[j]= Ψ0_trial[j]*sqrt(CycleSize[j])
+    end
 
     Ψ0_trial.=Ψ0_trial./sqrt(dot(Ψ0_trial,Ψ0_trial))
 
@@ -354,9 +358,9 @@ if ~c[:load_states]
    Ψ=zeros(Complex128, HRank)
    # I don't understand why this copying is necessary, it is a type conversion thing
    #
-   evals = eigs(H, nev=1, which=:SR,tol=1e-13,v0=getΨ0_trial(c[:t],V0,boundary,basis, HRank, CycleSize, InvCycles_Id))[1]
-   println(evals)
-   exit(0)
+   #evals = eigs(H, nev=1, which=:SR,tol=1e-13,v0=getΨ0_trial(c[:t],V0,boundary,basis, HRank, CycleSize, InvCycles_Id))[1]
+   #println(evals)
+   #exit(0)
 
    Ψ = eigs(H, nev=1, which=:SR,tol=1e-13,v0=getΨ0_trial(c[:t],V0,boundary,basis, HRank, CycleSize, InvCycles_Id))[2][1: HRank].*ones(Complex128, HRank)
    #println("size(complex) = ", Base.summarysize(Ψ[1]))
