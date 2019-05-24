@@ -76,11 +76,11 @@ function Symmetry_Cycles_q0R1PH1(basis::AbstractFermionsbasis)
         end
     end                
     return Cycles, CycleSize, NumOfCycles, InvCycles_Id, InvCycles_order
-   #|============================================================================
-   #| Cycles:stores the serial numbers of spatial the Kets in each cycle. 	    |
-   #| CycleSize:stores the number of spatial Kets in each cycle. 		        |
-   #| NumOfCycles:the total number of the rotational symmetry cycles.           |
-   #| For any spatial Ket with serial numbers i: the  ket is in the cycle       |
-   #| with Id =InvCycles_Id(i) and its index in the cycle is InvCycles_order(i).|
-   #|============================================================================
+    #|============================================================================
+    #| Cycles:stores the serial numbers of spatial the Kets in each cycle.       |
+    #| CycleSize:stores the number of spatial Kets in each cycle.                |
+    #| NumOfCycles:the total number of the rotational symmetry cycles.           |
+    #| For any spatial Ket with serial numbers i: the  ket is in the cycle.      |
+    #| with Id =InvCycles_Id(i) and its index in the cycle is InvCycles_order(i).|
+    #|============================================================================
 end
