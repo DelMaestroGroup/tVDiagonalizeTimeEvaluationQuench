@@ -19,10 +19,9 @@ function Symmetry_Cycles_q0R1PH1(basis::AbstractFermionsbasis)
 
     Cycles= zeros(Int64, Num_cycles_max, basis.K*4)
     CycleSize = zeros(Int64, Num_cycles_max)
-    CReflection= zeros(Bool, Num_cycles_max)
     InvCycles_Id = zeros(Int64, ll)
     InvCycles_order = zeros(Int64, ll)
-    const L=basis.K
+    const L=basis.K # number of sites
     Status  = trues(basis.D)
     NumOfCycles=0
     MemberID=0
@@ -77,4 +76,11 @@ function Symmetry_Cycles_q0R1PH1(basis::AbstractFermionsbasis)
         end
     end                
     return Cycles, CycleSize, NumOfCycles, InvCycles_Id, InvCycles_order
+   #|============================================================================
+   #| Cycles:stores the serial numbers of spatial the Kets in each cycle. 	    |
+   #| CycleSize:stores the number of spatial Kets in each cycle. 		        |
+   #| NumOfCycles:the total number of the rotational symmetry cycles.           |
+   #| For any spatial Ket with serial numbers i: the  ket is in the cycle       |
+   #| with Id =InvCycles_Id(i) and its index in the cycle is InvCycles_order(i).|
+   #|============================================================================
 end
