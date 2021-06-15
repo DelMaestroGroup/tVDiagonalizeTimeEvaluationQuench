@@ -1,7 +1,7 @@
 """
 Calculate the particle entanglement entropy for an eigenstate of the one-site-translation operator with eigenvalue q=0.
 """
-function particle_entropy_Ts(basis::AbstractFermionsbasis, Asize::Int, d::Vector{Complex128}, measure_obdm::Bool, AmatrixStructure:: Array{Int64,3})
+function particle_entropy_Ts(basis::AbstractFermionsbasis, Asize::Int, d::Vector{ComplexF64}, measure_obdm::Bool, AmatrixStructure:: Array{Int64,3})
 
     SRen = zeros(Float64,3)
     DimA=Int64
@@ -12,7 +12,7 @@ function particle_entropy_Ts(basis::AbstractFermionsbasis, Asize::Int, d::Vector
     end
     norm= Float64
     facto= Float64
-    AdA_elem= Complex128
+    AdA_elem= ComplexF64
     L = basis.K
     N = basis.N
     Bsize = N - Asize
@@ -35,8 +35,8 @@ function particle_entropy_Ts(basis::AbstractFermionsbasis, Asize::Int, d::Vector
     DimB = Int(round(facto))
 
     DimAdA= DimA
-    const basisA = Fermionsbasis(L, Asize)
-    const basisB = Fermionsbasis(L, Bsize)
+    basisA = Fermionsbasis(L, Asize)
+    basisB = Fermionsbasis(L, Bsize)
 
     CyclesA, CycleSizeA, NumOfCyclesA =Translational_Symmetry_Cycles(basisA)
 CyclesA=0
@@ -53,11 +53,11 @@ CyclesB=0
     norm=sqrt(Wa*Wb/factorial(basis.N))
     Aparity= Asize%2
     Bparity= Bsize%2
-    element= Complex128
+    element= ComplexF64
 
     #find the spectrum of the reduced density matrix
     for q=0:L-1
-        Amatrixq=zeros(Complex128, NumOfCyclesA, NumOfCyclesB)
+        Amatrixq=zeros(ComplexF64, NumOfCyclesA, NumOfCyclesB)
         for i=1: NumOfCyclesB
             for j=1: NumOfCyclesA 
                 minSize=CycleSizeA[j]

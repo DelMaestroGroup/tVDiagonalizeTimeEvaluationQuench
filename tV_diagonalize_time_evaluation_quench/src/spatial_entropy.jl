@@ -3,7 +3,7 @@ Calculate both the spatial and the operational entanglement entropies of a
 region A, using the SVD. The latter is the "entanglement of particles"
 introduced by Wiseman and Vaccaro in 2003.
 """
-function spatial_entropy(basis::AbstractFermionsbasis, A, d::Vector{Complex128},InvCycles_Id::Vector{Int64})
+function spatial_entropy(basis::AbstractFermionsbasis, A, d::Vector{ComplexF64},InvCycles_Id::Vector{Int64})
     B = setdiff(1:basis.K, A)
     A = convert(Array{Int,1},A)
     # Matrices to SVD
@@ -12,7 +12,7 @@ function spatial_entropy(basis::AbstractFermionsbasis, A, d::Vector{Complex128},
         DimA = num_vectors(basis, i, length(A))
         DimB = num_vectors(basis, basis.N-i, length(B))
 
-        push!(Amatrices, zeros(Complex128, DimA, DimB))
+        push!(Amatrices, zeros(ComplexF64, DimA, DimB))
     end
 
 #    norms = zeros(Float64, basis.N+1)
@@ -69,4 +69,4 @@ function spatial_entropy(basis::AbstractFermionsbasis, A, d::Vector{Complex128},
     S1_sp, S2_sp
 end
 
-spatial_entropy(basis::AbstractFermionsbasis, Asize::Int, d::Vector{Complex128},InvCycles_Id::Vector{Int64}) = spatial_entropy(basis, 1:Asize, d, InvCycles_Id)
+spatial_entropy(basis::AbstractFermionsbasis, Asize::Int, d::Vector{ComplexF64},InvCycles_Id::Vector{Int64}) = spatial_entropy(basis, 1:Asize, d, InvCycles_Id)

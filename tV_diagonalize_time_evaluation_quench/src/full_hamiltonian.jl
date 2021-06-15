@@ -14,7 +14,7 @@ function full_hamiltonian(basis::AbstractFermionsbasis, Ts::AbstractVector{Float
     length(Ts) == end_site || error("Incorrect number of Ts: $(length(Ts)) != $(end_site)")
     length(mus) == basis.K || error("Incorrect number of mus: $(length(mus)) != $(basis.K)")
 
-    H=zeros(Complex128, basis.D, basis.D)
+    H=zeros(ComplexF64, basis.D, basis.D)
 
     for (i, bra) in enumerate(basis)
         # Diagonal part

@@ -21,7 +21,7 @@ function Symmetry_Cycles_q0R1PH1(basis::AbstractFermionsbasis)
     CycleSize = zeros(Int64, Num_cycles_max)
     InvCycles_Id = zeros(Int64, ll)
     InvCycles_order = zeros(Int64, ll)
-    const L=basis.K # number of sites
+    L=basis.K # number of sites
     Status  = trues(basis.D)
     NumOfCycles=0
     MemberID=0

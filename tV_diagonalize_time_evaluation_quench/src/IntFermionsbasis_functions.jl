@@ -30,7 +30,7 @@ function Fermionsbasis(K::Int, N::Int)
     # Basis size.
     D = num_vectors(N, K)
     v =2^N-1
-    vectors = Vector{Int}(D)
+    vectors = Vector{Int}(undef, D)
 
     vectors[1] = v
     for i in 2:D
@@ -110,19 +110,19 @@ mutable struct FermionsbasisIterState
     i::Int
 end
 
-function Base.start(basis::AbstractFermionsbasis)
-    FermionsbasisIterState(0)
-end
+#function Base.start(basis::AbstractFermionsbasis)
+#    FermionsbasisIterState(0)
+#end
+#
+#function Base.next(basis::AbstractFermionsbasis, state::FermionsbasisIterState)
+#    state.i += 1
 
-function Base.next(basis::AbstractFermionsbasis, state::FermionsbasisIterState)
-    state.i += 1
+#    @view(basis.vectors[state.i]), state
+#end
 
-    @view(basis.vectors[state.i]), state
-end
-
-function Base.done(basis::AbstractFermionsbasis, state::FermionsbasisIterState)
-    state.i == basis.D
-end
+#function Base.done(basis::AbstractFermionsbasis, state::FermionsbasisIterState)
+#    state.i == basis.D
+#end
 
 Base.eltype(::Type{AbstractFermionsbasis}) = Int
 Base.length(basis::AbstractFermionsbasis) = basis.D
@@ -133,60 +133,60 @@ end
 
 
 # find first bit=0 from the extreme right bit
-function findfirstEmpty{I<:Integer}(v::I)
+function findfirstEmpty(v::Int)
     return trailing_ones(v)+1
 end
 
 # find first bit=1 from the extreme right bit
-function findfirstOccupide{I<:Integer}(v::I)
+function findfirstOccupide(v::Int)
     return trailing_zeros(v)+1
 end
 
 # find first bit=0 after the first bit=1 from the extreme right bit
-function findFrsEmpAfterFrsOcc{I<:Integer}(v::I)
+function findFrsEmpAfterFrsOcc(v::Int)
     return  findfirstOccupide(v)+trailing_ones(v>>>(findfirstOccupide(v)))+1 
 end
 
 # set a bit to 1  
-function OccupySite{I<:Integer}(v::I,bit::Int64)
-    return ((1 << (bit-1)) | v)::I
+function OccupySite(v::Int,bit::Int64)
+    return ((1 << (bit-1)) | v)::Int64
 end
 
 # set a bit to 0 
-function EmptySite{I<:Integer}(v::I,bit::Int64)
-    return convert(I, (~(1 << (bit-1))) & Int64(v))
+function EmptySite(v::Int,bit::Int64)
+    return convert(Int64, (~(1 << (bit-1))) & Int64(v))
 end
 
 # set a bit to bitvalue 0 or 1  
-function SetSite{I<:Integer}(v::I,bit::Int64,bitvalue::Int64)
-    return  convert(I, (~((1-bitvalue) << (bit-1))) & Int64(((bitvalue << (bit-1)) | v)))
+function SetSite(v::Int,bit::Int64,bitvalue::Int64)
+    return  convert(Int64, (~((1-bitvalue) << (bit-1))) & Int64(((bitvalue << (bit-1)) | v)))
 
 end
 
 # read a bit 
-function CheckSite{I<:Integer}(v::I,bit::Int64)
+function CheckSite(v::Int,bit::Int64)
     return Int64((v >> (bit-1)) & 1)
 end
 
 # Flip k bits (0 <--> 1) (101100 --> 010011)
-function FlipKet{I<:Integer}(v::I,k:: Int64)
-    return ((~v << (64-k)) >>> (64-k))::I
+function FlipKet(v::Int,k:: Int64)
+    return ((~v << (64-k)) >>> (64-k))::Int64
 end
-FlipKet{I<:Integer}(v::I, basis::Fermionsbasis) = FlipKet(v,basis.K)
+FlipKet(v::Int, basis::Fermionsbasis) = FlipKet(v,basis.K)
 
-#function FlipKet{I<:Integer}(v::I,k:: Int64)
-#    return ~v & (2^k-1)::I
+#function FlipKet(v::Int,k:: Int64)
+#    return ~v & (2^k-1)::Int64
 #end
-#function FlipKet{I<:Integer}(v::I,k:: Int64)
-#    return ~v & (~-(1<<k))  ::I
+#function FlipKet(v::Int,k:: Int64)
+#    return ~v & (~-(1<<k))  ::Int64
 #end
 
 
 # Reverse k bits from right to lift (101100 --> 001101)
-function ReverseKet{I<:Integer}(v::I,k:: Int64)
-    return (Mybswap(v) >>> (64-k))::I
+function ReverseKet(v::Int,k:: Int64)
+    return (Mybswap(v) >>> (64-k))::Int64
 end
-ReverseKet{I<:Integer}(v::I,basis::Fermionsbasis) = ReverseKet(v,basis.K)
+ReverseKet(v::Int,basis::Fermionsbasis) = ReverseKet(v,basis.K)
 
 
 function Mybswap(i::Int64)
@@ -209,23 +209,23 @@ end
 
 
 # circle shifts k bits to the left by 1 step (101101 --> 110110)
-function CircshiftKet{I<:Integer}(v::I,k:: Int64)
-    return (v << (64-k+1)>>>(64-k))|(v>>>(k-1))::I
+function CircshiftKet(v::Int,k:: Int64)
+    return (v << (64-k+1)>>>(64-k))|(v>>>(k-1))::Int64
 end
-CircshiftKet{I<:Integer}(v::I,basis::Fermionsbasis) = CircshiftKet(v,basis.K)
+CircshiftKet(v::Int,basis::Fermionsbasis) = CircshiftKet(v,basis.K)
 
-#function CircshiftKet{I<:Integer}(v::I,k:: Int64)
-#    return ((v << 1)|(v>>>(k-1))) & (~-(1<<k)) ::I
+#function CircshiftKet(v::Int,k:: Int64)
+#    return ((v << 1)|(v>>>(k-1))) & (~-(1<<k)) ::Int64
 #end
 
 #creates a subset u out of v using the indices list A
-function SubKet{I<:Integer}(v::I,A:: Array{Int,1}) 
+function SubKet(v::Int,A:: Array{Int,1}) 
     u=Int64(0)
     for i=1:length(A)
         u=SetSite(u,i,CheckSite(v,A[i]))
     end
-    return convert(I,u)
+    return convert(Int64,u)
 end
-SubKet{I<:Integer}(v::I, A:: Array{Int,1}, basis::Fermionsbasis) = SubKet(v,A)
+SubKet(v::Int, A:: Array{Int,1}, basis::Fermionsbasis) = SubKet(v,A)
 
 

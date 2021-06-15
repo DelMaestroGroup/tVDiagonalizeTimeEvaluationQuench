@@ -1,6 +1,8 @@
  module tVDiagonalize
 
 using IntFermionicbasis
+using SparseArrays
+using LinearAlgebra: svdvals!,Symmetric, svdvals
 
 export
     BdryCond,

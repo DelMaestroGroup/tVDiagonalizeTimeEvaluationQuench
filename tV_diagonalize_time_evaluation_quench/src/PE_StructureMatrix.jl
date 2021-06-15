@@ -14,8 +14,8 @@ function PE_StructureMatrix(basis::AbstractFermionsbasis, Asize::Int, InvCycles_
     if Asize==0
        return zeros(Int64,1,1,1)
     end
-    const basisA = Fermionsbasis(L, Asize)
-    const basisB = Fermionsbasis(L, Bsize)
+    basisA = Fermionsbasis(L, Asize)
+    basisB = Fermionsbasis(L, Bsize)
 
     CyclesA, CycleSizeA, NumOfCyclesA =Translational_Symmetry_Cycles(basisA)
     CyclesB, CycleSizeB, NumOfCyclesB =Translational_Symmetry_Cycles(basisB)

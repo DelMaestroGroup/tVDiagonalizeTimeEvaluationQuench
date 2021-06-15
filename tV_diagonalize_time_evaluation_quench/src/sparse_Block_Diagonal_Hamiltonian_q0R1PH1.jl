@@ -6,7 +6,7 @@ function sparse_Block_Diagonal_Hamiltonian_q0R1PH1(basis::AbstractFermionsbasis,
         warn("particle-hole symmetry works only at half-filling,", "  quit")
         quit()
     end
-    const N=basis.N
+    N=basis.N
 
     #Creating the block H_(q=0,R=1,P=1) of the hamiltonian.
     rows = Int64[]

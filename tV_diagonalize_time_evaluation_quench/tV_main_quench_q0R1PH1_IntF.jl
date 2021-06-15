@@ -5,6 +5,21 @@ push!(LOAD_PATH, joinpath(dirname(@__FILE__), "src"))
 using tVDiagonalize
 using ArgParse
 using IntFermionicbasis
+using Arpack
+using Printf
+using LinearAlgebra
+
+struct FileHeader
+    M::Int64
+    N::Int64
+    time_num:: Int64
+    basis_num:: Int64
+    V0::Float64
+    V::Float64
+    time_min::Float64
+    time_max::Float64
+end
+
 # ------------------------------------------------------------------------------
 function getΨ0_trial(t::Float64, V0::Float64, boundary::BdryCond, basis::AbstractFermionsbasis, Rank::Int64, CycleSize::Vector{Int64},InvCycles_Id::Vector{Int64})
 
@@ -21,7 +36,7 @@ function getΨ0_trial(t::Float64, V0::Float64, boundary::BdryCond, basis::Abstra
             num_link = basis.K
         end
 
-        for i=1: HRank
+        for i=1: Rank
             bra=basis.vectors[Cycles[i,1]]
             cc=0
             for j=1:num_link j_next = j % basis.K + 1
@@ -36,7 +51,7 @@ function getΨ0_trial(t::Float64, V0::Float64, boundary::BdryCond, basis::Abstra
         end
     end
 
-    for j=1: HRank
+    for j=1: Rank
        Ψ0_trial[j]= Ψ0_trial[j]*sqrt(CycleSize[j])
     end
 
@@ -46,7 +61,7 @@ function getΨ0_trial(t::Float64, V0::Float64, boundary::BdryCond, basis::Abstra
 end
 
 # ------------------------------------------------------------------------------
-function pair_correlation(basis::AbstractFermionsbasis, d::Vector{Complex128}, InvCycles_Id::Vector{Int64})
+function pair_correlation(basis::AbstractFermionsbasis, d::Vector{ComplexF64}, InvCycles_Id::Vector{Int64})
 """ We exploit translational symmetry to speed things up. """
 
     # setup the needed vectors
@@ -67,7 +82,7 @@ function pair_correlation(basis::AbstractFermionsbasis, d::Vector{Complex128}, I
     return g2
 end
 # ------------------------------------------------------------------------------
-
+function parse_commandline()
 s = ArgParseSettings()
 s.autofix_names = true
 @add_arg_table s begin
@@ -185,12 +200,17 @@ add_arg_group(s, "entanglement entropy")
         arg_type = Int
         required = true
 end
-c = parsed_args = parse_args(ARGS, s, as_symbols=true)
 
+    return parse_args(s, as_symbols=true)
+end
+
+function main()
+#######c = parsed_args = parse_args(ARGS, s, as_symbols=true)
+c=parse_commandline()
 # Number of sites
-const M = c[:M]
+M = c[:M]
 # Number of particles
-const N = c[:N]
+N = c[:N]
 if M!=2N
     println("Not at half-filling: the number of sites =", M," and the number of particles =",N )
     exit(1)
@@ -201,17 +221,17 @@ if c[:save_states] && c[:load_states]
 end
 
 # Boundary conditions
-const boundary = c[:boundary]
+boundary = c[:boundary]
 # Size of region A
-const Asize = c[:ee]
+Asize = c[:ee]
 
 # Initial V
-const V0 = c[:V0]
+V0 = c[:V0]
 # Final V
-const V = c[:V]
+V = c[:V]
 
 # Initial time
-const time_min = c[:time_min]
+time_min = c[:time_min]
 
 if c[:time_log] && c[:time_num] === nothing
     println("--time-log must be used with --time-num")
@@ -248,16 +268,16 @@ else
 end
 
 # Output file
-if c[:out] === nothing
-     output = @sprintf "partEE_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%06.3f_%06.3f_%1d.dat" M N V0 V Δt time_range[1] time_range[end] Asize
-else
-     output = c[:out]
-end
+###### if c[:out] === nothing
+######      output = @sprintf "partEE_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%06.3f_%06.3f_%1d.dat" M N V0 V Δt time_range[1] time_range[end] Asize
+###### else
+######      output = c[:out]
+###### end
 
 # output file if we are measuring the spatial entanglement entropy
-if c[:spatial]
+###### if c[:spatial]
      spat_output = @sprintf "spatEE_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%06.3f_%06.3f_%1d.dat" M N V0 V Δt time_range[1] time_range[end] Asize
-end
+###### end
 
 # output file if we are measuring the pair correlation function 
 if c[:g2]
@@ -287,7 +307,7 @@ if c[:save_states] || c[:load_states]
         Ψt_output=c[:states_file]
     end
 end
-const basis = Fermionsbasis(M, N)
+basis = Fermionsbasis(M, N)
 
 q0 = c[:Allqs] ? 1 : 0
 p1 = c[:Allps] ? 1 : -1
@@ -296,9 +316,9 @@ p1 = c[:Allps] ? 1 : -1
 #_______________________________________________________________________________
 ll=length(basis)
 μ=zeros(Float64, M)
-exp_q=zeros(Complex128, basis.K)
+exp_q=zeros(ComplexF64, basis.K)
 #  Initial wave function in terms of the spatial basis
-Ψn=Complex128
+Ψn=ComplexF64
 # the one body density matrix
 obdm=zeros(Float64,M,length(time_range))
 
@@ -306,15 +326,15 @@ obdm=zeros(Float64,M,length(time_range))
 
 # open and prepare files for output
 if ~c[:save_states]
-    f_part = open(output, "w")
-    write(f_part, "# M=$(M), N=$(N), V0=$(V0), V=$(V), $(boundary)\n")
-    write(f_part,@sprintf "#%11s%24s%24s\n" "time (tJ)" "S₁(n=$(Asize))" "S₂(n=$(Asize))")
-    if c[:spatial]
+######     f_part = open(output, "w")
+######     write(f_part, "# M=$(M), N=$(N), V0=$(V0), V=$(V), $(boundary)\n")
+######     write(f_part,@sprintf "#%11s%24s%24s\n" "time (tJ)" "S₁(n=$(Asize))" "S₂(n=$(Asize))")
+######     if c[:spatial]
         ℓsize = div(M, 2)
         f_spat = open(spat_output, "w")
         write(f_spat, "# M=$(M), N=$(N), V0=$(V0), V=$(V), $(boundary)\n")
         write(f_spat,@sprintf "#%11s%24s%24s\n" "time (tJ)" "S₁(ℓ=$(ℓsize))" "S₂(ℓ=$(ℓsize))")
-    end
+######     end
     if c[:g2]
         f_g2 = open(g2_output, "w")
         write(f_g2, "# M=$(M), N=$(N), V0=$(V0), V=$(V), $(boundary)\n")
@@ -327,80 +347,76 @@ if ~c[:save_states]
 
 end
 #_______________________________________________________________________________
-struct FileHeader
-    M::Int64
-    N::Int64
-    time_num:: Int64
-    basis_num:: Int64
-    V0::Float64
-    V::Float64
-    time_min::Float64
-    time_max::Float64
-end
 
 # Exploit symmetries of the hamiltonian to perform a bloack diagonalization
 Cycles, CycleSize, NumOfCycles, InvCycles_Id, InvCycles_order =Symmetry_Cycles_q0R1PH1(basis)
-      #println("size(Cycles) = ",Base.summarysize(Cycles)/1024^3," gb")
+      println("size(Cycles) = ",Base.summarysize(Cycles)/1024^3," gb")
 
 if ~c[:load_states]  
    #---------------------------------------find the states---------------------------------------
    # Create the Hamiltonian 
    H, HRank = sparse_Block_Diagonal_Hamiltonian_q0R1PH1(basis, Cycles, CycleSize, NumOfCycles, InvCycles_Id, InvCycles_order, c[:t],V0) 
-   #println("size(H) = ",Base.summarysize(H)/1024^3," gb")
+   println("size(H) = ",Base.summarysize(H)/1024^3," gb")
    print(" sparse_hamiltonian finish\n ")
-
+      println("size(Cycles) = ",Base.summarysize(Cycles)/1024^3," gb")####################
    # H0 = full_hamiltonian(basis, c[:t], V0,boundary=boundary)
    # EigenValues, EigenVectors = eig(H0)
    # wft0 = EigenVectors[:,1]
 
    #Perform the Lanczos diagonalization to obtain the lowest eigenvector
    # http://docs.julialang.org/en/release-0.3/stdlib/linalg/?highlight=lanczos
-   Ψ=zeros(Complex128, HRank)
+   Ψ=zeros(ComplexF64, HRank)
    # I don't understand why this copying is necessary, it is a type conversion thing
    #
    #evals = eigs(H, nev=1, which=:SR,tol=1e-13,v0=getΨ0_trial(c[:t],V0,boundary,basis, HRank, CycleSize, InvCycles_Id))[1]
    #println(evals)
    #exit(0)
 
-   Ψ = eigs(H, nev=1, which=:SR,tol=1e-13,v0=getΨ0_trial(c[:t],V0,boundary,basis, HRank, CycleSize, InvCycles_Id))[2][1: HRank].*ones(Complex128, HRank)
+   Ψ = eigs(H, nev=1, which=:SR,tol=1e-13,v0=getΨ0_trial(c[:t],V0,boundary,basis, HRank, CycleSize, InvCycles_Id))[2][1: HRank].*ones(ComplexF64, HRank)
    #println("size(complex) = ", Base.summarysize(Ψ[1]))
-   H=0
+   H= Nothing
    Ψ.= Ψ./sqrt(dot(Ψ,Ψ))
 
    if abs(time_range[1])> 1.0E-12 || length(time_range) >1
-      EigenEnergie=Complex128
+      EigenEnergie=ComplexF64
       #  wave function in terms of the Symmetry basis at time t
-      Ψt=zeros(Complex128, NumOfCycles, time_num)
-      TimeEvolutionFactor=zeros(Complex128, time_num)
+      Ψt=zeros(ComplexF64, NumOfCycles, time_num)
+      TimeEvolutionFactor=zeros(ComplexF64, time_num)
+print(" one finish\n ")#####################################################
 
       for q =0: (basis.K-1)*q0
          for P=1:-2:-1*p1 
             #Create the Hamiltonian
+print(" two finish\n ")#####################################################
+
+Cycles, CycleSize, NumOfCycles, InvCycles_Id, InvCycles_order =Symmetry_Cycles_q0R1PH1(basis)##################
+Ψt=zeros(ComplexF64, NumOfCycles, time_num)##################
+
             Hq,HqRank = Block_Diagonal_Hamiltonian_q0R1PH1(basis, Cycles, CycleSize, NumOfCycles, InvCycles_Id, InvCycles_order, c[:t],V) 
-            EigenEnergies_q,VV = eig(Symmetric(Hq))
-            #println("size(Hq) = ",Base.summarysize(Hq)/1024^3," gb")
-            Hq=0
+            EigenEnergies_q,VV = eigen(Symmetric(Hq))
+            println("size(Hq) = ",Base.summarysize(Hq)/1024^3," gb")
+            Hq= Nothing
             for i_HqRank =1: HqRank
                EigenEnergie= EigenEnergies_q[i_HqRank]
                Ψn =dot(VV[:, i_HqRank],Ψ)
                TimeEvolutionFactor.=exp.(-(0.0+1.0im)* time_range*EigenEnergie)*Ψn
                Ψt+=kron(VV[:, i_HqRank],transpose(TimeEvolutionFactor))
             end
-            VV=0
-            EigenEnergies_q=0
-            Cycles=0
-            InvCycles_order=0
+            VV= Nothing
+            EigenEnergies_q= Nothing
+            Cycles= Nothing
+            InvCycles_order= Nothing
          end
       end   
       print(" Block_Diagonal_Hamiltonian finished\n ")
    else
-      Ψt=zeros(Complex128, NumOfCycles, time_num)
+      Ψt=zeros(ComplexF64, NumOfCycles, time_num)
       Ψt[:,1]=Ψ[:]
    end
 else  
    #---------------------------------------load the states---------------------------------------
-   Cycles=0
-   InvCycles_order=0
+   Cycles= Nothing
+   InvCycles_order= Nothing
    file_header1=Array{Int64}(4)
    file_header2=Array{Float64}(4)
    Ψtf=open(Ψt_output, "r")
@@ -428,8 +444,8 @@ else
          println("M_f=",M_f," N_f=",N_f," V0_f=",V0_f," V_f=",V_f," Δt_f=",Δt_f," time_max_f=", time_max_f," time_min_f=",time_min_f)
          exit(1)
       end
-      Ψt =Array{Complex128}(NumOfCycles, time_num)
-      Ψ=zeros(Complex128, NumOfCycles)
+      Ψt =Array{ComplexF64}(NumOfCycles, time_num)
+      Ψ=zeros(ComplexF64, NumOfCycles)
       it=0
       for (it_f, time_f) in enumerate(time_range_f)
         read!(Ψtf, Ψ)
@@ -445,9 +461,10 @@ else
    HRank = basis_num_f
    HqRank = basis_num_f
 end
+it = 1 ##################
 if ~c[:save_states] 
    #---------------------------------------calculate the entanglement---------------------------------------
-   const AmatrixStructure =PE_StructureMatrix(basis, Asize, InvCycles_Id)
+######   const AmatrixStructure =PE_StructureMatrix(basis, Asize, InvCycles_Id)
 
    it = 1
 
@@ -458,11 +475,11 @@ if ~c[:save_states]
          Ψ[j]=Ψ[j]/sqrt(CycleSize[j])
       end
 
-      if c[:spatial]
+######       if c[:spatial]
           s_spatial = spatial_entropy(basis, ℓsize, Ψ, InvCycles_Id)
           write(f_spat, @sprintf "%12.6f%24.12E%24.12E\n" time s_spatial[1] s_spatial[2])
           flush(f_spat)
-      end
+######       end
 
       # measure the pair correlation function
       if c[:g2]
@@ -475,23 +492,23 @@ if ~c[:save_states]
           flush(f_g2)
       end
 
-      if c[:obdm] && Asize == 1
-         s_particle,obdm[:,it] = particle_entropy_Ts(basis, Asize, Ψ,c[:obdm], AmatrixStructure)
+######       if c[:obdm] && Asize == 1
+######          s_particle,obdm[:,it] = particle_entropy_Ts(basis, Asize, Ψ,c[:obdm], AmatrixStructure)
 
-      else
-         s_particle = particle_entropy_Ts(basis, Asize, Ψ,c[:obdm], AmatrixStructure)
+######       else
+######         s_particle = particle_entropy_Ts(basis, Asize, Ψ,c[:obdm], AmatrixStructure)
 
-      end
+######       end
 
-      write(f_part, @sprintf "%12.6f%24.12E%24.12E\n" time s_particle[1] s_particle[2])
-      flush(f_part)
+######       write(f_part, @sprintf "%12.6f%24.12E%24.12E\n" time s_particle[1] s_particle[2])
+######       flush(f_part)
       it += 1
    end
-   close(f_part)
+######    close(f_part)
 
-   if c[:spatial]
+######    if c[:spatial]
        close(f_spat)
-   end
+######    end
 
    # close the pair correlation function file
    if c[:g2]
@@ -529,3 +546,8 @@ else
       flush(Ψtf)
    close(Ψtf)
 end
+
+end
+
+main()
+
