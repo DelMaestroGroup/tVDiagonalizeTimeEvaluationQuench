@@ -410,8 +410,8 @@ else
    #---------------------------------------load the states---------------------------------------
    Cycles= Nothing
    InvCycles_order= Nothing
-   file_header1=Array{Int64}(4)
-   file_header2=Array{Float64}(4)
+   file_header1 =zeros(Int64,4)
+   file_header2 =zeros(Float64,4)
    Ψtf=open(Ψt_output, "r")
       read!(Ψtf,file_header1)
       read!(Ψtf,file_header2)
@@ -423,7 +423,8 @@ else
       V_f=file_header2[2]
       time_min_f=file_header2[3]
       time_max_f=file_header2[4]
-      time_range_f = linspace(time_min_f, time_max_f, time_num_f)
+      #time_range_f = linspace(time_min_f, time_max_f, time_num_f)
+      time_range_f = LinRange(time_min_f, time_max_f, time_num_f)
       println(length(time_range_f))
       if length(time_range_f) > 1
           Δt_f = time_range_f[2]-time_range_f[1]
@@ -437,7 +438,7 @@ else
          println("M_f=",M_f," N_f=",N_f," V0_f=",V0_f," V_f=",V_f," Δt_f=",Δt_f," time_max_f=", time_max_f," time_min_f=",time_min_f)
          exit(1)
       end
-      Ψt =Array{ComplexF64}(NumOfCycles, time_num)
+      Ψt = zeros(ComplexF64, NumOfCycles, time_num)
       Ψ=zeros(ComplexF64, NumOfCycles)
       it=0
       for (it_f, time_f) in enumerate(time_range_f)
