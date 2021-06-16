@@ -16,6 +16,7 @@ function Symmetry_Cycles_q0R1PH1(basis::AbstractFermionsbasis)
     
     #Num_cycles_max=round(Int64,basis.D/basis.K*1.5/4) #This is a rough upper bound on the number of cycles. It could me smaller.
     Num_cycles_max=round(Int64,basis.D/basis.K*1.5) #This is a rough upper bound on the number of cycles. It could me smaller.
+    #Num_cycles_max = round(Int64,((basis.D/basis.K/2)+6*(basis.D/basis.K/2)^.5))
 
     Cycles= zeros(Int64, Num_cycles_max, basis.K*4)
     CycleSize = zeros(Int64, Num_cycles_max)

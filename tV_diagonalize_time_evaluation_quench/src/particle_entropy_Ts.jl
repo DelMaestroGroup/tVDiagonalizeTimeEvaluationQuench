@@ -43,8 +43,8 @@ CyclesA=0
     CyclesB, CycleSizeB, NumOfCyclesB =Translational_Symmetry_Cycles(basisB)
 CyclesB=0
 
-    λ=Array{Float64}(NumOfCyclesA*L)
-
+    #λ=Array{Float64}(NumOfCyclesA*L)
+    λ=zeros(Float64, NumOfCyclesA*L)
     # Weight factors
     Wa=factorial(Asize)
     Wb=factorial(Bsize)

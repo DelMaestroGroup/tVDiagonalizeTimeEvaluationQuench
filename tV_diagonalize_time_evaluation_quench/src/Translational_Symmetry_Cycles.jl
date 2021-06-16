@@ -9,11 +9,12 @@ function Translational_Symmetry_Cycles(basis::AbstractFermionsbasis)
 
     IdStatus = Bool
     Num_cycles_max=round(Int64,basis.D/basis.K*1.5)
+    #Num_cycles_max = round(Int64,((basis.D/basis.K/2)+6*(basis.D/basis.K/2)^.5))
     Cycles= zeros(Int64, Num_cycles_max, basis.K)
     CycleSize = zeros(Int64, Num_cycles_max)
     Status  = trues(basis.D)
     NumOfCycles=0
-    for (i, bra) in enumerate(basis)
+    for i=1: basis.D
         if Status[i]
             NumOfCycles+=1
             MemberID=0

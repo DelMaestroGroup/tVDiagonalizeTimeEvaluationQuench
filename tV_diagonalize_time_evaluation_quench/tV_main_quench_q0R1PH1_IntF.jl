@@ -205,7 +205,6 @@ end
 end
 
 function main()
-#######c = parsed_args = parse_args(ARGS, s, as_symbols=true)
 c=parse_commandline()
 # Number of sites
 M = c[:M]
@@ -268,16 +267,16 @@ else
 end
 
 # Output file
-###### if c[:out] === nothing
-######      output = @sprintf "partEE_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%06.3f_%06.3f_%1d.dat" M N V0 V Δt time_range[1] time_range[end] Asize
-###### else
-######      output = c[:out]
-###### end
+if c[:out] === nothing
+      output = @sprintf "partEE_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%06.3f_%06.3f_%1d.dat" M N V0 V Δt time_range[1] time_range[end] Asize
+ else
+      output = c[:out]
+ end
 
 # output file if we are measuring the spatial entanglement entropy
-###### if c[:spatial]
+ if c[:spatial]
      spat_output = @sprintf "spatEE_%02d_%02d_%+5.3f_%+5.3f_%6.4f_%06.3f_%06.3f_%1d.dat" M N V0 V Δt time_range[1] time_range[end] Asize
-###### end
+ end
 
 # output file if we are measuring the pair correlation function 
 if c[:g2]
@@ -326,15 +325,15 @@ obdm=zeros(Float64,M,length(time_range))
 
 # open and prepare files for output
 if ~c[:save_states]
-######     f_part = open(output, "w")
-######     write(f_part, "# M=$(M), N=$(N), V0=$(V0), V=$(V), $(boundary)\n")
-######     write(f_part,@sprintf "#%11s%24s%24s\n" "time (tJ)" "S₁(n=$(Asize))" "S₂(n=$(Asize))")
-######     if c[:spatial]
+     f_part = open(output, "w")
+     write(f_part, "# M=$(M), N=$(N), V0=$(V0), V=$(V), $(boundary)\n")
+     write(f_part,@sprintf "#%11s%24s%24s\n" "time (tJ)" "S₁(n=$(Asize))" "S₂(n=$(Asize))")
+     if c[:spatial]
         ℓsize = div(M, 2)
         f_spat = open(spat_output, "w")
         write(f_spat, "# M=$(M), N=$(N), V0=$(V0), V=$(V), $(boundary)\n")
         write(f_spat,@sprintf "#%11s%24s%24s\n" "time (tJ)" "S₁(ℓ=$(ℓsize))" "S₂(ℓ=$(ℓsize))")
-######     end
+     end
     if c[:g2]
         f_g2 = open(g2_output, "w")
         write(f_g2, "# M=$(M), N=$(N), V0=$(V0), V=$(V), $(boundary)\n")
@@ -350,15 +349,15 @@ end
 
 # Exploit symmetries of the hamiltonian to perform a bloack diagonalization
 Cycles, CycleSize, NumOfCycles, InvCycles_Id, InvCycles_order =Symmetry_Cycles_q0R1PH1(basis)
-      println("size(Cycles) = ",Base.summarysize(Cycles)/1024^3," gb")
+      #println("size(Cycles) = ",Base.summarysize(Cycles)/1024^3," gb")
 
 if ~c[:load_states]  
    #---------------------------------------find the states---------------------------------------
    # Create the Hamiltonian 
    H, HRank = sparse_Block_Diagonal_Hamiltonian_q0R1PH1(basis, Cycles, CycleSize, NumOfCycles, InvCycles_Id, InvCycles_order, c[:t],V0) 
-   println("size(H) = ",Base.summarysize(H)/1024^3," gb")
+   #println("size(H) = ",Base.summarysize(H)/1024^3," gb")
    print(" sparse_hamiltonian finish\n ")
-      println("size(Cycles) = ",Base.summarysize(Cycles)/1024^3," gb")####################
+
    # H0 = full_hamiltonian(basis, c[:t], V0,boundary=boundary)
    # EigenValues, EigenVectors = eig(H0)
    # wft0 = EigenVectors[:,1]
@@ -382,16 +381,10 @@ if ~c[:load_states]
       #  wave function in terms of the Symmetry basis at time t
       Ψt=zeros(ComplexF64, NumOfCycles, time_num)
       TimeEvolutionFactor=zeros(ComplexF64, time_num)
-print(" one finish\n ")#####################################################
 
       for q =0: (basis.K-1)*q0
          for P=1:-2:-1*p1 
             #Create the Hamiltonian
-print(" two finish\n ")#####################################################
-
-Cycles, CycleSize, NumOfCycles, InvCycles_Id, InvCycles_order =Symmetry_Cycles_q0R1PH1(basis)##################
-Ψt=zeros(ComplexF64, NumOfCycles, time_num)##################
-
             Hq,HqRank = Block_Diagonal_Hamiltonian_q0R1PH1(basis, Cycles, CycleSize, NumOfCycles, InvCycles_Id, InvCycles_order, c[:t],V) 
             EigenEnergies_q,VV = eigen(Symmetric(Hq))
             println("size(Hq) = ",Base.summarysize(Hq)/1024^3," gb")
@@ -461,10 +454,9 @@ else
    HRank = basis_num_f
    HqRank = basis_num_f
 end
-it = 1 ##################
 if ~c[:save_states] 
    #---------------------------------------calculate the entanglement---------------------------------------
-######   const AmatrixStructure =PE_StructureMatrix(basis, Asize, InvCycles_Id)
+   AmatrixStructure =PE_StructureMatrix(basis, Asize, InvCycles_Id)
 
    it = 1
 
@@ -475,11 +467,11 @@ if ~c[:save_states]
          Ψ[j]=Ψ[j]/sqrt(CycleSize[j])
       end
 
-######       if c[:spatial]
+      if c[:spatial]
           s_spatial = spatial_entropy(basis, ℓsize, Ψ, InvCycles_Id)
           write(f_spat, @sprintf "%12.6f%24.12E%24.12E\n" time s_spatial[1] s_spatial[2])
           flush(f_spat)
-######       end
+      end
 
       # measure the pair correlation function
       if c[:g2]
@@ -492,23 +484,23 @@ if ~c[:save_states]
           flush(f_g2)
       end
 
-######       if c[:obdm] && Asize == 1
-######          s_particle,obdm[:,it] = particle_entropy_Ts(basis, Asize, Ψ,c[:obdm], AmatrixStructure)
+      if c[:obdm] && Asize == 1
+          s_particle,obdm[:,it] = particle_entropy_Ts(basis, Asize, Ψ,c[:obdm], AmatrixStructure)
 
-######       else
-######         s_particle = particle_entropy_Ts(basis, Asize, Ψ,c[:obdm], AmatrixStructure)
+      else
+         s_particle = particle_entropy_Ts(basis, Asize, Ψ,c[:obdm], AmatrixStructure)
 
-######       end
+      end
 
-######       write(f_part, @sprintf "%12.6f%24.12E%24.12E\n" time s_particle[1] s_particle[2])
-######       flush(f_part)
+      write(f_part, @sprintf "%12.6f%24.12E%24.12E\n" time s_particle[1] s_particle[2])
+      flush(f_part)
       it += 1
    end
-######    close(f_part)
+   close(f_part)
 
-######    if c[:spatial]
+   if c[:spatial]
        close(f_spat)
-######    end
+   end
 
    # close the pair correlation function file
    if c[:g2]
