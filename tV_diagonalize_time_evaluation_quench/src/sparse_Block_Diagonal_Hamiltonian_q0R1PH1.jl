@@ -1,7 +1,7 @@
 """
 Create the sparse translational, reflection and particle-hole symmetry block H_(q=0,R=1,P=1) of the hamiltonian of fermionic 1D chains with PBC/APBC.
 """
-function sparse_Block_Diagonal_Hamiltonian_q0R1PH1(basis::AbstractFermionsbasis, Cycles:: Array{Int64,2}, CycleSize:: Vector{Int64}, NumOfCycles::Int64, InvCycles_Id:: Vector{Int64}, InvCycles_order:: Vector{Int64}, t::Float64, V::Float64)
+function sparse_Block_Diagonal_Hamiltonian_q0R1PH1(basis::AbstractFermionsbasis, Cycles:: Array{Int64,2}, CycleSize:: Vector{Int64}, NumOfCycles::Int64, InvCycles_Id:: Vector{Int64}, InvCycles_order:: Vector{Int64}, t::Float64, V::Float64, Vp::Float64)
     if basis.K!=2*basis.N
         warn("particle-hole symmetry works only at half-filling,", "  quit")
         quit()
@@ -16,16 +16,19 @@ function sparse_Block_Diagonal_Hamiltonian_q0R1PH1(basis::AbstractFermionsbasis,
     for CycleId =1: NumOfCycles
         # Diagonal part
         Vsum = 0.0
+        Vpsum = 0.0
         bra=basis.vectors[Cycles[CycleId,1]]
 
         for j=1:end_site
             j_next = j % basis.K + 1
+            j_next_next = j_next % basis.K + 1
             Vsum += CheckSite(bra,j) * CheckSite(bra,j_next)
+            Vpsum += CheckSite(bra,j) * CheckSite(bra, j_next_next)
 
         end
         push!(rows, CycleId)
         push!(cols, CycleId)
-        push!(elements, Vsum*V)
+        push!(elements, Vsum*V+ Vpsum*Vp)
 
         # Off-diagonal part
 
